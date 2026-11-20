@@ -64,7 +64,7 @@ export function RentForgeLogo({ className = "size-8" }: { className?: string }) 
   );
 }
 
-export default function Navbar() {
+function NavbarContent() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
@@ -368,5 +368,17 @@ export default function Navbar() {
         </div>
       )}
     </header>
+  );
+}
+
+export default function Navbar() {
+  return (
+    <React.Suspense
+      fallback={
+        <header className="sticky top-0 z-50 h-16 w-full border-b border-gray-800 bg-[#111827] shadow-md" />
+      }
+    >
+      <NavbarContent />
+    </React.Suspense>
   );
 }
