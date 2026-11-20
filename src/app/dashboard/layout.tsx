@@ -154,8 +154,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         ...commonLinks,
         { name: "My Equipment Listings", href: "/dashboard/my-equipment", icon: Wrench },
         { name: "Add New Equipment", href: "/dashboard/add-equipment", icon: PlusCircle },
-        { name: "Rental Orders Received", href: "/dashboard/orders", icon: FileCheck2 },
-        { name: "Earnings & Payouts", href: "/dashboard/earnings", icon: DollarSign },
+        { name: "Owner Rentals Received", href: "/dashboard/owner-rentals", icon: FileCheck2 },
       ];
     }
 
