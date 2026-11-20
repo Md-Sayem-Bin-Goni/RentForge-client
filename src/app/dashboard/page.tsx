@@ -20,6 +20,8 @@ import {
   FileCheck2,
   Sparkles,
   ArrowUpRight,
+  Layers,
+  AlertTriangle,
 } from "lucide-react";
 import {
   AreaChart,
@@ -37,7 +39,7 @@ import { useSession } from "@/lib/auth-client";
 import { axiosSecure } from "@/lib/axiosSecure";
 
 // Monthly Earnings Data for Owner Recharts
-const MONTHLY_EARNINGS_DATA = [
+const OWNER_MONTHLY_EARNINGS_DATA = [
   { month: "Jun", earnings: 2850, completed: 3 },
   { month: "Jul", earnings: 3400, completed: 4 },
   { month: "Aug", earnings: 4120, completed: 5 },
@@ -47,12 +49,36 @@ const MONTHLY_EARNINGS_DATA = [
 ];
 
 // Category Rentals Breakdown for Owner BarChart
-const CATEGORY_RENTALS_DATA = [
+const OWNER_CATEGORY_RENTALS_DATA = [
   { category: "Construction", completed: 14, active: 4, revenue: 11200 },
   { category: "Photography", completed: 8, active: 2, revenue: 4800 },
   { category: "Heavy Vehicles", completed: 5, active: 1, revenue: 3200 },
   { category: "Electronics", completed: 4, active: 1, revenue: 1800 },
   { category: "Event Gear", completed: 3, active: 0, revenue: 1100 },
+];
+
+// Monthly Booking Statistics for Admin Recharts
+const ADMIN_MONTHLY_BOOKINGS_DATA = [
+  { month: "Jan", bookings: 28, revenue: 8400, completed: 25 },
+  { month: "Feb", bookings: 34, revenue: 10200, completed: 30 },
+  { month: "Mar", bookings: 42, revenue: 12600, completed: 39 },
+  { month: "Apr", bookings: 38, revenue: 11400, completed: 36 },
+  { month: "May", bookings: 51, revenue: 15300, completed: 47 },
+  { month: "Jun", bookings: 58, revenue: 17400, completed: 52 },
+  { month: "Jul", bookings: 64, revenue: 19200, completed: 59 },
+  { month: "Aug", bookings: 61, revenue: 18300, completed: 55 },
+  { month: "Sep", bookings: 55, revenue: 16500, completed: 50 },
+  { month: "Oct", bookings: 53, revenue: 15900, completed: 49 },
+  { month: "Nov", bookings: 58, revenue: 17400, completed: 51 },
+];
+
+// Platform Equipment Distribution for Admin BarChart
+const ADMIN_EQUIPMENT_STATUS_DATA = [
+  { category: "Construction", approved: 72, pending: 6 },
+  { category: "Photography", approved: 44, pending: 3 },
+  { category: "Heavy Vehicles", approved: 32, pending: 2 },
+  { category: "Electronics", approved: 22, pending: 2 },
+  { category: "Event Gear", approved: 16, pending: 1 },
 ];
 
 export default function DashboardOverviewPage() {
@@ -142,17 +168,6 @@ export default function DashboardOverviewPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => switchRole("customer")}
-                  className={`rounded-full px-2.5 py-0.5 font-bold transition-all ${
-                    role === "customer"
-                      ? "bg-emerald-500 text-white shadow-xs"
-                      : "text-gray-400 hover:text-white"
-                  }`}
-                >
-                  Customer View
-                </button>
-                <button
-                  type="button"
                   onClick={() => switchRole("admin")}
                   className={`rounded-full px-2.5 py-0.5 font-bold transition-all ${
                     role === "admin"
@@ -162,6 +177,17 @@ export default function DashboardOverviewPage() {
                 >
                   Admin View
                 </button>
+                <button
+                  type="button"
+                  onClick={() => switchRole("customer")}
+                  className={`rounded-full px-2.5 py-0.5 font-bold transition-all ${
+                    role === "customer"
+                      ? "bg-emerald-500 text-white shadow-xs"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Customer View
+                </button>
               </div>
             </div>
 
@@ -169,16 +195,33 @@ export default function DashboardOverviewPage() {
               Welcome back, {userName}
             </h1>
             <p className="mt-2 text-sm text-gray-300 max-w-xl leading-relaxed">
-              {role === "owner"
+              {role === "admin"
+                ? "Manage platform-wide user permissions, review incoming equipment approvals, and monitor rental volume."
+                : role === "owner"
                 ? "Track your machinery fleet metrics, monthly rental yields, and contractor bookings in real time."
-                : role === "admin"
-                ? "Manage platform equipment approvals, verify contractor registrations, and track system revenue."
                 : "Manage your active jobsite rentals, browse saved equipment, and track delivery schedules."}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {role === "owner" ? (
+            {role === "admin" ? (
+              <>
+                <Link
+                  href="/dashboard/all-equipment"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-500 transition-colors"
+                >
+                  <ShieldCheck className="size-4" />
+                  <span>Review Equipment</span>
+                </Link>
+                <Link
+                  href="/dashboard/all-users"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-gray-900/80 px-5 py-3 text-xs sm:text-sm font-semibold text-gray-200 hover:bg-gray-800 hover:text-white transition-colors"
+                >
+                  <Users className="size-4" />
+                  <span>Manage Users</span>
+                </Link>
+              </>
+            ) : role === "owner" ? (
               <>
                 <Link
                   href="/dashboard/add-equipment"
@@ -195,14 +238,6 @@ export default function DashboardOverviewPage() {
                   <span>My Fleet</span>
                 </Link>
               </>
-            ) : role === "admin" ? (
-              <Link
-                href="/dashboard/manage-equipment"
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-500 transition-colors"
-              >
-                <ShieldCheck className="size-4" />
-                <span>Review Approvals</span>
-              </Link>
             ) : (
               <Link
                 href="/equipment"
@@ -222,12 +257,322 @@ export default function DashboardOverviewPage() {
         </div>
       </div>
 
-      {/* ----------------- OWNER ANALYTICS SECTION ----------------- */}
-      {role === "owner" ? (
+      {/* ----------------- ADMIN ANALYTICS VIEW ----------------- */}
+      {role === "admin" ? (
         <div className="space-y-8">
-          {/* Key Metric Cards: total listed equipment, completed rentals, total earnings, monthly earnings */}
+          {/* Key Metrics: total users, total equipment, total bookings, pending approvals, completed rentals, total revenue */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
+            {/* 1. Total Users */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-emerald-500/40 transition-colors">
+              <div className="flex items-center justify-between text-muted-foreground text-[11px] uppercase font-bold tracking-wider">
+                <span>Total Users</span>
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Users className="size-3.5" />
+                </div>
+              </div>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">1,420</p>
+              <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                +18 this week
+              </p>
+            </div>
+
+            {/* 2. Total Equipment */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-emerald-500/40 transition-colors">
+              <div className="flex items-center justify-between text-muted-foreground text-[11px] uppercase font-bold tracking-wider">
+                <span>Total Equipment</span>
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Wrench className="size-3.5" />
+                </div>
+              </div>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">186</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                172 live in catalog
+              </p>
+            </div>
+
+            {/* 3. Total Bookings */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-emerald-500/40 transition-colors">
+              <div className="flex items-center justify-between text-muted-foreground text-[11px] uppercase font-bold tracking-wider">
+                <span>Total Bookings</span>
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <ShoppingBag className="size-3.5" />
+                </div>
+              </div>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">542</p>
+              <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                58 active this month
+              </p>
+            </div>
+
+            {/* 4. Pending Approvals */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-amber-500/40 transition-colors">
+              <div className="flex items-center justify-between text-muted-foreground text-[11px] uppercase font-bold tracking-wider">
+                <span>Pending Approvals</span>
+                <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+                  <Clock className="size-3.5" />
+                </div>
+              </div>
+              <p className="mt-3 text-2xl font-extrabold text-amber-500">14</p>
+              <p className="mt-1 text-[11px] text-amber-600 font-bold">
+                Requires review
+              </p>
+            </div>
+
+            {/* 5. Completed Rentals */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-emerald-500/40 transition-colors">
+              <div className="flex items-center justify-between text-muted-foreground text-[11px] uppercase font-bold tracking-wider">
+                <span>Completed Rentals</span>
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="size-3.5" />
+                </div>
+              </div>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">468</p>
+              <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                98.8% satisfaction
+              </p>
+            </div>
+
+            {/* 6. Total Revenue */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-emerald-500/40 transition-colors">
+              <div className="flex items-center justify-between text-muted-foreground text-[11px] uppercase font-bold tracking-wider">
+                <span>Total Revenue</span>
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <DollarSign className="size-3.5" />
+                </div>
+              </div>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">$148,200</p>
+              <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                Platform fee: $14,820
+              </p>
+            </div>
+          </div>
+
+          {/* Recharts Analytics: Monthly Booking Statistics & Equipment Distribution */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Monthly Booking Statistics Chart */}
+            <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4 mb-6">
+                <div>
+                  <h3 className="text-base font-bold text-foreground">
+                    Monthly Booking Statistics &amp; Volume
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Rental booking frequency and platform order volume (Jan - Nov).
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <TrendingUp className="size-3.5" />
+                  <span>+16.2% Annual Growth</span>
+                </div>
+              </div>
+
+              {mounted ? (
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={ADMIN_MONTHLY_BOOKINGS_DATA}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="adminEmeraldGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#059669" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#059669" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#888888"
+                        opacity={0.15}
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        stroke="#888888"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        stroke="#888888"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#111827",
+                          borderColor: "#1f2937",
+                          borderRadius: "1rem",
+                          color: "#fff",
+                          fontSize: "12px",
+                          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
+                        }}
+                        formatter={(val: any, name: any) => [
+                          name === "revenue" ? `$${val.toLocaleString()}` : `${val} bookings`,
+                          name === "revenue" ? "Gross Volume" : "Bookings",
+                        ]}
+                      />
+                      <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }} />
+                      <Area
+                        type="monotone"
+                        dataKey="bookings"
+                        name="Rental Bookings"
+                        stroke="#059669"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#adminEmeraldGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-72 w-full animate-pulse rounded-2xl bg-muted/30" />
+              )}
+            </div>
+
+            {/* Equipment Fleet Status & Distribution */}
+            <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4 mb-6">
+                <div>
+                  <h3 className="text-base font-bold text-foreground">
+                    Equipment Fleet Approval Distribution
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Approved live equipment vs pending review by category.
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">
+                  <BarChart3 className="size-3.5" />
+                  <span>Platform Catalog</span>
+                </div>
+              </div>
+
+              {mounted ? (
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={ADMIN_EQUIPMENT_STATUS_DATA}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#888888"
+                        opacity={0.15}
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="category"
+                        stroke="#888888"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        stroke="#888888"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#111827",
+                          borderColor: "#1f2937",
+                          borderRadius: "1rem",
+                          color: "#fff",
+                          fontSize: "12px",
+                          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }} />
+                      <Bar
+                        dataKey="approved"
+                        name="Approved (Live)"
+                        fill="#059669"
+                        radius={[6, 6, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="pending"
+                        name="Pending Approval"
+                        fill="#f59e0b"
+                        radius={[6, 6, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-72 w-full animate-pulse rounded-2xl bg-muted/30" />
+              )}
+            </div>
+          </div>
+
+          {/* Admin Quick Navigation Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Link
+              href="/dashboard/all-users"
+              className="group rounded-2xl border border-border bg-card p-6 shadow-xs hover:border-emerald-500/50 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <Users className="size-4" />
+                  </div>
+                  <span className="font-bold text-base text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    Manage Platform Users
+                  </span>
+                </div>
+                <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+                Inspect registered contractor accounts and reassign user roles (Customer, Owner, Admin).
+              </p>
+            </Link>
+
+            <Link
+              href="/dashboard/all-equipment"
+              className="group rounded-2xl border border-border bg-card p-6 shadow-xs hover:border-emerald-500/50 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+                    <ShieldCheck className="size-4" />
+                  </div>
+                  <span className="font-bold text-base text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    Equipment Fleet Approvals
+                  </span>
+                </div>
+                <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+                Approve, reject, update, or remove machinery listings across all regional yards.
+              </p>
+            </Link>
+
+            <Link
+              href="/dashboard/all-rentals"
+              className="group rounded-2xl border border-border bg-card p-6 shadow-xs hover:border-emerald-500/50 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <ShoppingBag className="size-4" />
+                  </div>
+                  <span className="font-bold text-base text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    Monitor Platform Bookings
+                  </span>
+                </div>
+                <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+                Audit contractor-owner rental agreements, payment escrow status, and jobsite logistics.
+              </p>
+            </Link>
+          </div>
+        </div>
+      ) : role === "owner" ? (
+        /* ----------------- OWNER ANALYTICS SECTION ----------------- */
+        <div className="space-y-8">
+          {/* Key Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Total Listed Equipment */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs hover:border-emerald-500/40 transition-colors">
               <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
                 <span>Total Listed Equipment</span>
@@ -244,7 +589,6 @@ export default function DashboardOverviewPage() {
               </div>
             </div>
 
-            {/* Completed Rentals */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs hover:border-emerald-500/40 transition-colors">
               <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
                 <span>Completed Rentals</span>
@@ -261,7 +605,6 @@ export default function DashboardOverviewPage() {
               </div>
             </div>
 
-            {/* Total Earnings */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs hover:border-emerald-500/40 transition-colors">
               <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
                 <span>Total Earnings</span>
@@ -278,7 +621,6 @@ export default function DashboardOverviewPage() {
               </div>
             </div>
 
-            {/* Monthly Earnings */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs hover:border-emerald-500/40 transition-colors">
               <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
                 <span>Monthly Earnings</span>
@@ -296,9 +638,8 @@ export default function DashboardOverviewPage() {
             </div>
           </div>
 
-          {/* Recharts Visualizations: AreaChart (Monthly Earnings) & BarChart (Category Rentals) */}
+          {/* Recharts Visualizations */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* AreaChart: Monthly Earnings Trend */}
             <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4 mb-6">
                 <div>
@@ -319,7 +660,7 @@ export default function DashboardOverviewPage() {
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                      data={MONTHLY_EARNINGS_DATA}
+                      data={OWNER_MONTHLY_EARNINGS_DATA}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                     >
                       <defs>
@@ -375,7 +716,6 @@ export default function DashboardOverviewPage() {
               )}
             </div>
 
-            {/* BarChart: Rentals Completed & Active by Category */}
             <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4 mb-6">
                 <div>
@@ -396,7 +736,7 @@ export default function DashboardOverviewPage() {
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={CATEGORY_RENTALS_DATA}
+                      data={OWNER_CATEGORY_RENTALS_DATA}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                     >
                       <CartesianGrid
@@ -428,9 +768,7 @@ export default function DashboardOverviewPage() {
                           boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
                         }}
                       />
-                      <Legend
-                        wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }}
-                      />
+                      <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }} />
                       <Bar
                         dataKey="completed"
                         name="Completed Rentals"
@@ -452,7 +790,7 @@ export default function DashboardOverviewPage() {
             </div>
           </div>
 
-          {/* Owner Quick Navigation Cards */}
+          {/* Owner Quick Navigation */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Link
               href="/dashboard/my-equipment"
@@ -515,44 +853,8 @@ export default function DashboardOverviewPage() {
             </Link>
           </div>
         </div>
-      ) : role === "admin" ? (
-        /* Admin Metrics */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
-              <span>Total Users</span>
-              <Users className="size-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <p className="mt-3 text-3xl font-extrabold text-foreground">1,420</p>
-            <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">+18 this week</p>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
-              <span>Pending Approvals</span>
-              <ShieldCheck className="size-4 text-amber-500" />
-            </div>
-            <p className="mt-3 text-3xl font-extrabold text-foreground">14</p>
-            <p className="mt-1 text-xs text-amber-600 font-medium">Requires review</p>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
-              <span>Active Rentals</span>
-              <ShoppingBag className="size-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <p className="mt-3 text-3xl font-extrabold text-foreground">84</p>
-            <p className="mt-1 text-xs text-muted-foreground">Across all regions</p>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
-              <span>Total Escrow Volume</span>
-              <DollarSign className="size-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <p className="mt-3 text-3xl font-extrabold text-foreground">$148,200</p>
-            <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">Platform revenue: $14,820</p>
-          </div>
-        </div>
       ) : (
-        /* Customer Metrics & Navigation */
+        /* ----------------- CUSTOMER METRICS & NAVIGATION ----------------- */
         <div className="space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">

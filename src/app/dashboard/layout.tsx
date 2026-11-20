@@ -142,10 +142,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     if (userRole === "admin") {
       return [
         ...commonLinks,
-        { name: "Manage Users", href: "/dashboard/manage-users", icon: Users },
-        { name: "Equipment Approvals", href: "/dashboard/manage-equipment", icon: ShieldCheck, badge: "Fleet" },
-        { name: "All Bookings", href: "/dashboard/all-bookings", icon: ShoppingBag },
-        { name: "Platform Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+        { name: "All Users", href: "/dashboard/all-users", icon: Users },
+        { name: "All Equipment", href: "/dashboard/all-equipment", icon: ShieldCheck, badge: "Fleet" },
+        { name: "All Rentals & Bookings", href: "/dashboard/all-rentals", icon: ShoppingBag },
+        { name: "Admin Analytics", href: "/dashboard", icon: BarChart3 },
       ];
     }
 

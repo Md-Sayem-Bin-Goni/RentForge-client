@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ShieldAlert, ArrowLeft, Sparkles, CheckCircle2, Loader2 } from "lucide-react";
+import { ShieldAlert, ArrowLeft, Sparkles, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import { axiosSecure } from "@/lib/axiosSecure";
 import { RentForgeLogo } from "@/components/shared/Navbar";
@@ -20,7 +20,7 @@ interface PrivateRouteProps {
  * 2. STRICT: Waits until `isPending` is false before redirecting unauthenticated users.
  * 3. Prevents reload on private routes from kicking logged-in users to /login.
  * 4. Checks role permissions (customer, owner, admin) against allowedRoles.
- * 5. Provides seamless 1-click role activation for owner routes during review & testing.
+ * 5. Provides seamless 1-click role activation for owner or admin routes during review & testing.
  */
 export default function PrivateRoute({
   children,
@@ -97,8 +97,8 @@ export default function PrivateRoute({
     }
   }, [session, isPending, router]);
 
-  // Handler to upgrade customer to owner for testing/onboarding
-  const handleActivateOwner = async () => {
+  // Handler to upgrade customer to required role (owner or admin) for testing/onboarding
+  const handleActivateRole = async (targetRole: "owner" | "admin") => {
     if (!session?.user?.email) return;
 
     setIsUpgradingRole(true);
@@ -106,17 +106,18 @@ export default function PrivateRoute({
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const email = encodeURIComponent(session.user.email);
       await axiosSecure.patch(`${apiUrl}/api/users/${email}`, {
-        role: "owner",
+        role: targetRole,
       });
 
-      setDbRole("owner");
-      toast.success("Owner privileges activated! Welcome to the Owner Workspace.");
-      // Refresh to ensure all layout listeners update
+      setDbRole(targetRole);
+      toast.success(
+        `${targetRole === "admin" ? "Admin" : "Owner"} privileges activated! Welcome to the workspace.`
+      );
       router.refresh();
     } catch (err: any) {
       // In local dev without backend, set locally
-      setDbRole("owner");
-      toast.success("Owner mode activated for this session.");
+      setDbRole(targetRole);
+      toast.success(`${targetRole.toUpperCase()} mode activated for this session.`);
     } finally {
       setIsUpgradingRole(false);
     }
@@ -157,7 +158,14 @@ export default function PrivateRoute({
 
   // Role verification check
   const activeRole = dbRole || (session.user as { role?: string })?.role || "customer";
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(activeRole) && activeRole !== "admin") {
+  const isAdminRequired = allowedRoles?.includes("admin") && !allowedRoles.includes("owner");
+  const isUnauthorized =
+    allowedRoles &&
+    allowedRoles.length > 0 &&
+    !allowedRoles.includes(activeRole) &&
+    activeRole !== "admin";
+
+  if (isUnauthorized) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <div className="rounded-3xl border border-border bg-card p-8 sm:p-12 shadow-xl">
@@ -166,28 +174,32 @@ export default function PrivateRoute({
           </div>
 
           <h2 className="mt-6 text-2xl font-extrabold text-foreground sm:text-3xl">
-            Owner Role Required
+            {isAdminRequired ? "Admin Access Required" : "Owner Role Required"}
           </h2>
           <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-            This workspace section is reserved for verified equipment owners. Your current account role is{" "}
+            This workspace section is reserved for{" "}
+            {isAdminRequired ? "platform administrators" : "verified equipment owners"}.
+            Your current account role is{" "}
             <span className="font-bold text-foreground capitalize">{activeRole}</span>.
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
-              onClick={handleActivateOwner}
+              onClick={() => handleActivateRole(isAdminRequired ? "admin" : "owner")}
               disabled={isUpgradingRole}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-emerald-500 transition-colors disabled:opacity-50"
             >
               {isUpgradingRole ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  <span>Activating Owner Mode...</span>
+                  <span>Activating Privileges...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="size-4 text-emerald-200" />
-                  <span>Activate Equipment Owner Role</span>
+                  <span>
+                    Activate {isAdminRequired ? "Admin" : "Owner"} Role
+                  </span>
                 </>
               )}
             </button>
@@ -203,21 +215,40 @@ export default function PrivateRoute({
 
           <div className="mt-8 border-t border-border pt-6 text-left">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Equipment Owner Privileges Include:
+              {isAdminRequired ? "Administrator Privileges Include:" : "Equipment Owner Privileges Include:"}
             </h4>
             <ul className="mt-3 space-y-2 text-xs text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>List unlimited construction, photography, and industrial equipment.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Receive and manage contractor rental booking requests.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Track equipment utilization and monthly rental payouts.</span>
-              </li>
+              {isAdminRequired ? (
+                <>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Manage all registered user roles (Customer, Owner, Admin).</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Approve, reject, update, and delete platform equipment listings.</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Audit platform-wide bookings, escrow transactions, and platform fees.</span>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>List unlimited construction, photography, and industrial equipment.</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Receive and manage contractor rental booking requests.</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Track equipment utilization and monthly rental payouts.</span>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
         </div>
