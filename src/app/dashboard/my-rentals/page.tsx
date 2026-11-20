@@ -20,10 +20,12 @@ import {
   Receipt,
   RotateCcw,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 import PrivateRoute from "@/components/shared/PrivateRoute";
 import { axiosSecure } from "@/lib/axiosSecure";
 import { useSession } from "@/lib/auth-client";
+import Image from "next/image";
 
 interface RentalBooking {
   _id: string;
@@ -36,105 +38,17 @@ interface RentalBooking {
   bookingDate: string;
   totalAmount: number;
   quantity: number;
-  paymentStatus: "Paid" | "Pending" | "Refunded" | "Escrow Hold";
+  paymentStatus: "Paid" | "Pending" | "Unpaid" | "Refunded" | "Escrow Hold";
   bookingStatus: "Confirmed" | "In Use" | "Completed" | "Cancelled";
   durationDays: number;
   deliveryAddress: string;
+  checkoutUrl?: string;
 }
-
-// Fallback customer bookings for resilient UX
-const MOCK_CUSTOMER_RENTALS: RentalBooking[] = [
-  {
-    _id: "bk-801",
-    equipmentId: "eq-201",
-    equipmentName: "CAT 308 CR Mini Hydraulic Excavator",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=400&q=80",
-    category: "Construction Equipment",
-    startDate: "2026-11-24",
-    endDate: "2026-11-28",
-    bookingDate: "2026-11-19",
-    totalAmount: 1382,
-    quantity: 1,
-    paymentStatus: "Paid",
-    bookingStatus: "In Use",
-    durationDays: 4,
-    deliveryAddress: "Jobsite 14, 400 Industrial Way, Chicago, IL",
-  },
-  {
-    _id: "bk-802",
-    equipmentId: "eq-202",
-    equipmentName: "RED V-Raptor 8K VV Cinema Package",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=400&q=80",
-    category: "Photography Equipment",
-    startDate: "2026-12-02",
-    endDate: "2026-12-05",
-    bookingDate: "2026-11-18",
-    totalAmount: 1458,
-    quantity: 1,
-    paymentStatus: "Paid",
-    bookingStatus: "Confirmed",
-    durationDays: 3,
-    deliveryAddress: "Stage 4, Sunset Gower Studios, Los Angeles, CA",
-  },
-  {
-    _id: "bk-803",
-    equipmentId: "eq-205",
-    equipmentName: "Cummins 100kW Towable Quiet Generator",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=400&q=80",
-    category: "Electronics",
-    startDate: "2026-11-10",
-    endDate: "2026-11-14",
-    bookingDate: "2026-11-05",
-    totalAmount: 907,
-    quantity: 1,
-    paymentStatus: "Paid",
-    bookingStatus: "Completed",
-    durationDays: 4,
-    deliveryAddress: "Centennial Park Event Lawn, Atlanta, GA",
-  },
-  {
-    _id: "bk-804",
-    equipmentId: "eq-203",
-    equipmentName: "JLG 600AJ 60ft Articulating Boom Lift",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80",
-    category: "Construction Equipment",
-    startDate: "2026-10-14",
-    endDate: "2026-10-21",
-    bookingDate: "2026-10-09",
-    totalAmount: 1458,
-    quantity: 1,
-    paymentStatus: "Paid",
-    bookingStatus: "Completed",
-    durationDays: 7,
-    deliveryAddress: "Northgate Logistics Center, Dallas, TX",
-  },
-  {
-    _id: "bk-805",
-    equipmentId: "eq-206",
-    equipmentName: "Ford F-550 Crew Cab 4x4 Utility Truck",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=400&q=80",
-    category: "Vehicles & Transportation",
-    startDate: "2026-09-22",
-    endDate: "2026-09-25",
-    bookingDate: "2026-09-18",
-    totalAmount: 734,
-    quantity: 1,
-    paymentStatus: "Refunded",
-    bookingStatus: "Cancelled",
-    durationDays: 3,
-    deliveryAddress: "Mountain Pass Base Camp, Denver, CO",
-  },
-];
 
 export default function MyRentalsPage() {
   const { data: session } = useSession();
 
-  const [rentals, setRentals] = React.useState<RentalBooking[]>(MOCK_CUSTOMER_RENTALS);
+  const [rentals, setRentals] = React.useState<RentalBooking[]>([]);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("All");
   const [isLoading, setIsLoading] = React.useState(true);
@@ -159,12 +73,11 @@ export default function MyRentalsPage() {
           const list = Array.isArray(res.data)
             ? res.data
             : res.data.bookings || res.data.rentals || [];
-          if (list.length > 0) {
-            setRentals(list);
-          }
+          setRentals(list);
         }
       } catch (err) {
-        // Fallback to mock rentals
+        console.warn("Could not fetch customer rentals from backend:", err);
+        if (!isCancelled) setRentals([]);
       } finally {
         if (!isCancelled) {
           setIsLoading(false);
@@ -356,7 +269,7 @@ export default function MyRentalsPage() {
                       {/* Equipment Name & Image */}
                       <td className="py-4 px-4 sm:px-6">
                         <div className="flex items-center gap-3">
-                          <img
+                          <Image
                             src={rental.equipmentImage}
                             alt={rental.equipmentName}
                             className="size-12 rounded-lg object-cover border border-border shrink-0"
@@ -430,13 +343,24 @@ export default function MyRentalsPage() {
 
                       {/* Action View */}
                       <td className="py-4 px-4 text-right pr-6 whitespace-nowrap">
-                        <Link
-                          href={`/equipment/${rental.equipmentId}`}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 group-hover:underline"
-                        >
-                          <span>View Gear</span>
-                          <ArrowUpRight className="size-3.5" />
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          {rental.paymentStatus === "Unpaid" && rental.checkoutUrl && (
+                            <a
+                              href={rental.checkoutUrl}
+                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-500 shadow-xs transition-colors"
+                            >
+                              <span>Pay Now</span>
+                              <CreditCard className="size-3" />
+                            </a>
+                          )}
+                          <Link
+                            href={`/equipment/${rental.equipmentId}`}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 group-hover:underline"
+                          >
+                            <span>View Gear</span>
+                            <ArrowUpRight className="size-3.5" />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

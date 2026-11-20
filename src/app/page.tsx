@@ -47,100 +47,6 @@ interface EquipmentItem {
   specs: string[];
 }
 
-// Fallback 6 approved featured items with verified specs & imagery
-const FALLBACK_FEATURED: EquipmentItem[] = [
-  {
-    _id: "eq-101",
-    name: "CAT 308 CR Mini Hydraulic Excavator",
-    category: "Construction Equipment",
-    image:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=900&q=80",
-    pricePerDay: 320,
-    location: "Chicago, IL",
-    rating: 4.95,
-    reviewsCount: 38,
-    condition: "Commercial Grade",
-    status: "approved",
-    ownerName: "Apex Heavy Iron",
-    specs: ["8.5 Ton", "Diesel", "Enclosed Cab with A/C"],
-  },
-  {
-    _id: "eq-102",
-    name: "RED V-Raptor 8K VV Cinema Package",
-    category: "Photography Equipment",
-    image:
-      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=900&q=80",
-    pricePerDay: 450,
-    location: "Los Angeles, CA",
-    rating: 5.0,
-    reviewsCount: 24,
-    condition: "Pristine",
-    status: "approved",
-    ownerName: "CineVault Studios",
-    specs: ["8K VistaVision", "PL/RF Mount", "4x 2TB Cards"],
-  },
-  {
-    _id: "eq-103",
-    name: "JLG 600AJ 60ft Articulating Boom Lift",
-    category: "Construction Equipment",
-    image:
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80",
-    pricePerDay: 260,
-    location: "Dallas, TX",
-    rating: 4.9,
-    reviewsCount: 19,
-    condition: "OSHA Certified",
-    status: "approved",
-    ownerName: "SkyHigh Rentals",
-    specs: ["60 ft Reach", "4WD Diesel", "Dual Fuel"],
-  },
-  {
-    _id: "eq-104",
-    name: "John Deere 6155M Utility Tractor",
-    category: "Agriculture Equipment",
-    image:
-      "https://images.unsplash.com/photo-1530267981375-f0de937f5f13?auto=format&fit=crop&w=900&q=80",
-    pricePerDay: 290,
-    location: "Des Moines, IA",
-    rating: 4.88,
-    reviewsCount: 15,
-    condition: "Field Ready",
-    status: "approved",
-    ownerName: "Heartland Agritech",
-    specs: ["155 HP Engine", "AutoTrac Ready", "Hydraulic Hitch"],
-  },
-  {
-    _id: "eq-105",
-    name: "Cummins 100kW Towable Quiet Generator",
-    category: "Electronics",
-    image:
-      "https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=900&q=80",
-    pricePerDay: 210,
-    location: "Atlanta, GA",
-    rating: 4.92,
-    reviewsCount: 31,
-    condition: "Low Hours",
-    status: "approved",
-    ownerName: "VoltGrid Power",
-    specs: ["100 kVA", "Sound Attenuated", "68h Runtime"],
-  },
-  {
-    _id: "eq-106",
-    name: "Ford F-550 Crew Cab 4x4 Utility Truck",
-    category: "Vehicles & Transportation",
-    image:
-      "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=900&q=80",
-    pricePerDay: 225,
-    location: "Denver, CO",
-    rating: 4.96,
-    reviewsCount: 42,
-    condition: "Commercial Clean",
-    status: "approved",
-    ownerName: "Summit Fleet Logistics",
-    specs: ["6.7L V8 Turbo Diesel", "Hydraulic Crane", "Tool Beds"],
-  },
-];
-
 // Categories specified by user
 const CATEGORIES = [
   {
@@ -303,7 +209,7 @@ export default function HomePage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
-  const [featuredItems, setFeaturedItems] = React.useState<EquipmentItem[]>(FALLBACK_FEATURED);
+  const [featuredItems, setFeaturedItems] = React.useState<EquipmentItem[]>([]);
   const [isLoadingFeatured, setIsLoadingFeatured] = React.useState(false);
 
   // Fetch 6 approved featured items from GET /api/equipment/featured
@@ -321,14 +227,36 @@ export default function HomePage() {
             : response.data.equipment || response.data.items || [];
 
           if (items.length > 0) {
-            // Take up to 6 approved items
-            const approved = items.slice(0, 6);
+            // Take up to 6 approved items with normalized fields
+            const approved = items.slice(0, 6).map((it: any) => {
+              const specsArr = Array.isArray(it.specs)
+                ? it.specs
+                : typeof it.specs === "object" && it.specs !== null
+                ? Object.entries(it.specs).map(([k, v]) => `${k}: ${v}`)
+                : [];
+
+              return {
+                ...it,
+                name: it.name || it.title || "Equipment Item",
+                image:
+                  it.image ||
+                  it.equipmentImage ||
+                  (Array.isArray(it.images) && it.images.length > 0 ? it.images[0] : ""),
+                pricePerDay: Number(it.pricePerDay ?? it.rentalPrice ?? it.price ?? 0),
+                rentalPrice: Number(it.rentalPrice ?? it.pricePerDay ?? it.price ?? 0),
+                specs: specsArr,
+                ownerName: it.ownerName || it.owner?.name || "Equipment Owner",
+                location: it.location || "Available Nationwide",
+                rating: it.rating !== undefined ? Number(it.rating) : 5.0,
+                reviewsCount: it.reviewsCount !== undefined ? Number(it.reviewsCount) : 0,
+              };
+            });
             setFeaturedItems(approved);
           }
         }
       } catch (err) {
-        // Fallback to FALLBACK_FEATURED silently
-        console.warn("Featured equipment fetch notice: Using approved RentForge catalog items.");
+        console.warn("Featured equipment fetch notice: Backend unavailable or empty.");
+        setFeaturedItems([]);
       } finally {
         if (isMounted) setIsLoadingFeatured(false);
       }

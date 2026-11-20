@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import PrivateRoute from "@/components/shared/PrivateRoute";
 import { useSession } from "@/lib/auth-client";
+import { syncUserAndFetchJwt } from "@/lib/auth-sync";
 import { axiosSecure } from "@/lib/axiosSecure";
 
 const CATEGORIES = [
@@ -92,7 +93,7 @@ export default function AddEquipmentPage() {
 
     try {
       const apiKey =
-        process.env.NEXT_PUBLIC_IMGBB_API_KEY || "a272dcda4bdfa5a044738590c918a0ca";
+        process.env.NEXT_PUBLIC_IMGBB_API_KEY || "fb6eacd91cd727bbf84019db30c1ba83";
       const formData = new FormData();
       formData.append("image", file);
 
@@ -155,30 +156,51 @@ export default function AddEquipmentPage() {
 
     setIsSubmitting(true);
 
-    const payload = {
-      name: name.trim(),
-      description: description.trim(),
-      category,
-      location: location.trim(),
-      rentalPrice: Number(rentalPrice),
-      rentalType,
-      availableQuantity: Number(availableQuantity),
-      condition,
-      brand: brand.trim(),
-      model: model.trim(),
-      image: imageUrl.trim(),
-      rentalTerms: rentalTerms.trim(),
-      // Auto-attached Owner Info
-      ownerName: session?.user?.name || "Equipment Owner",
-      ownerEmail: session?.user?.email || "",
-      ownerImage: session?.user?.image || "",
-      // Required initial status
-      status: "Pending",
-      isAvailable: true,
-      createdAt: new Date().toISOString(),
-    };
-
     try {
+      // Ensure token is synced before submitting
+      if (session?.user?.email) {
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("access-token");
+        if (!token) {
+          await syncUserAndFetchJwt({
+            email: session.user.email,
+            name: session.user.name || undefined,
+            image: session.user.image || undefined,
+            role: (session.user as any)?.role || "owner",
+          });
+        }
+      }
+
+      const payload = {
+        name: name.trim(),
+        title: name.trim(),
+        equipmentName: name.trim(),
+        description: description.trim(),
+        category,
+        location: location.trim(),
+        rentalPrice: Number(rentalPrice),
+        price: Number(rentalPrice),
+        pricePerDay: Number(rentalPrice),
+        rentalType,
+        availableQuantity: Number(availableQuantity),
+        quantity: Number(availableQuantity),
+        condition,
+        brand: brand.trim(),
+        model: model.trim(),
+        image: imageUrl.trim(),
+        equipmentImage: imageUrl.trim(),
+        images: [imageUrl.trim()],
+        rentalTerms: rentalTerms.trim(),
+        // Auto-attached Owner Info
+        ownerName: session?.user?.name || "Equipment Owner",
+        ownerEmail: session?.user?.email || "",
+        ownerImage: session?.user?.image || "",
+        // Required initial status
+        status: "Pending",
+        isAvailable: true,
+        createdAt: new Date().toISOString(),
+      };
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       await axiosSecure.post(`${apiUrl}/api/equipment`, payload);
 
@@ -187,12 +209,12 @@ export default function AddEquipmentPage() {
       );
       router.push("/dashboard/my-equipment");
     } catch (err: any) {
-      console.warn("Backend API POST /api/equipment warning:", err);
-      // Fallback for resilient dev / offline preview
-      toast.success(
-        "Equipment listing created! Status set to 'Pending' (Admin Approval Queue)."
-      );
-      router.push("/dashboard/my-equipment");
+      console.error("Backend API POST /api/equipment error:", err);
+      const errMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to create equipment listing.";
+      toast.error(errMsg);
     } finally {
       setIsSubmitting(false);
     }

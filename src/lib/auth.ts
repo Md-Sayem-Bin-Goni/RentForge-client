@@ -17,7 +17,7 @@ if (process.env.NODE_ENV !== "production") {
   globalWithMongo._mongoClient = client;
 }
 
-const db = client.db();
+const db = client.db("rentforgeDB");
 
 export const auth = betterAuth({
   database: mongodbAdapter(db, { client }),

@@ -22,7 +22,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className="h-full antialiased font-sans"
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-emerald-500/20 selection:text-emerald-700 dark:selection:text-emerald-300 font-sans">
+      <body
+        className="min-h-full flex flex-col bg-background text-foreground selection:bg-emerald-500/20 selection:text-emerald-700 dark:selection:text-emerald-300 font-sans"
+        suppressHydrationWarning
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

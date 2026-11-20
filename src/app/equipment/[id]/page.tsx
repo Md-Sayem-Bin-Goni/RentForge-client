@@ -31,6 +31,7 @@ import {
 import PrivateRoute from "@/components/shared/PrivateRoute";
 import { axiosSecure } from "@/lib/axiosSecure";
 import { useSession } from "@/lib/auth-client";
+import { syncUserAndFetchJwt } from "@/lib/auth-sync";
 
 interface EquipmentDetail {
   _id: string;
@@ -55,7 +56,9 @@ interface EquipmentDetail {
     verified: boolean;
     location: string;
     totalRentals: number;
+    email?: string;
   };
+  ownerEmail?: string;
   specs: Record<string, string>;
   description: string;
   applications: string[];
@@ -68,73 +71,19 @@ interface EquipmentDetail {
   };
 }
 
-// Fallback details map
-const MOCK_DETAILS: Record<string, EquipmentDetail> = {
-  default: {
-    _id: "eq-201",
-    name: "CAT 308 CR Mini Hydraulic Excavator",
-    category: "Construction Equipment",
-    image:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=1200&q=80",
-    gallery: [
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80",
-    ],
-    rentalPrice: 320,
-    rentalType: "Daily",
-    location: "Chicago, IL",
-    isAvailable: true,
-    availableQuantity: 3,
-    condition: "Commercial Grade - Fully Serviced",
-    rating: 4.95,
-    reviewsCount: 38,
-    owner: {
-      name: "Apex Heavy Iron Group",
-      company: "Apex Equipment LLC",
-      rating: 4.98,
-      responseTime: "Within 15 mins",
-      verified: true,
-      location: "Chicago & Greater Mid-West",
-      totalRentals: 412,
-    },
-    specs: {
-      "Operating Weight": "8,500 kg (18,740 lbs)",
-      "Engine Power": "70.3 HP (52.4 kW)",
-      "Max Digging Depth": "4.69 m (15 ft 5 in)",
-      "Bucket Capacity": "0.28 m³ (0.37 yd³)",
-      "Fuel Capacity": "145 L (Diesel)",
-      "Cab Features": "Enclosed ROPS with Climate A/C & Telematics",
-    },
-    description:
-      "The Cat 308 CR Mini Excavator delivers maximum power and performance in a compact radius to help you work in congested urban jobsites. Features sealed and pressurized cab with improved air conditioning, adjustable wrist rests, and high-definition LCD monitor with pre-programmed work tools.",
-    applications: [
-      "Urban site excavation & foundation trenches",
-      "Demolition cleanup & debris clearing",
-      "Utility piping & water main installation",
-      "Commercial landscaping & grading",
-    ],
-    rentalTerms: {
-      securityDeposit: 500,
-      damageWaiver: "Optional 8% Comprehensive Jobsite Damage Protection",
-      cancellationPolicy: "Free cancellation up to 48 hours before scheduled start",
-      operatingHoursAllowed: "8 engine hours per daily rate included (overage: $25/hr)",
-      deliveryAvailable: true,
-    },
-  },
-};
-
 function EquipmentDetailsContent() {
   const params = useParams();
   const router = useRouter();
-  const id = (params?.id as string) || "eq-201";
+  const id = (params?.id as string) || "";
 
   const { data: session } = useSession();
 
-  const [equipment, setEquipment] = React.useState<EquipmentDetail>(MOCK_DETAILS.default);
-  const [selectedImage, setSelectedImage] = React.useState<string>(MOCK_DETAILS.default.image);
+  const [equipment, setEquipment] = React.useState<EquipmentDetail | null>(null);
+  const [selectedImage, setSelectedImage] = React.useState<string>("");
   const [isFavorited, setIsFavorited] = React.useState(false);
+  const [favoriteId, setFavoriteId] = React.useState<string | null>(null);
   const [isFavoriteLoading, setIsFavoriteLoading] = React.useState(false);
+  const [isPageLoading, setIsPageLoading] = React.useState(true);
   const [isBookingModalOpen, setIsBookingModalOpen] = React.useState(false);
 
   // Booking Modal State
@@ -146,31 +95,70 @@ function EquipmentDetailsContent() {
   const [additionalNotes, setAdditionalNotes] = React.useState("");
   const [isCheckoutLoading, setIsCheckoutLoading] = React.useState(false);
 
-  // Fetch full details
+  // 1. Fetch full details from backend
   React.useEffect(() => {
     let isMounted = true;
     const fetchDetails = async () => {
+      if (!id) return;
       try {
+        setIsPageLoading(true);
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         const res = await axiosSecure.get(`${apiUrl}/api/equipment/${id}`);
         if (isMounted && res.data) {
           const item = res.data.equipment || res.data;
-          setEquipment((prev) => {
-            const nextEquipment = {
-              ...prev,
-              ...item,
-              specs: item.specs || prev.specs,
-              owner: item.owner || prev.owner,
-              rentalTerms: item.rentalTerms || prev.rentalTerms,
-            };
-            if (item.image) {
-              setSelectedImage(item.image);
-            }
-            return nextEquipment;
-          });
+          const priceVal = Number(item.rentalPrice ?? item.price ?? item.pricePerDay ?? 0);
+          const imageVal =
+            item.image ||
+            item.equipmentImage ||
+            (Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : "");
+          const nameVal = item.name || item.title || "Equipment Detail";
+          const qtyVal = Number(item.availableQuantity ?? item.quantity ?? 1);
+
+          const loadedEquip: EquipmentDetail = {
+            _id: item._id,
+            name: nameVal,
+            category: item.category || "General",
+            rentalPrice: priceVal,
+            rentalType: item.rentalType || "Daily",
+            location: item.location || "",
+            image: imageVal,
+            gallery: Array.isArray(item.images) && item.images.length > 0 ? item.images : [imageVal],
+            availableQuantity: qtyVal,
+            isAvailable: item.isAvailable !== undefined ? item.isAvailable : qtyVal > 0,
+            condition: item.condition || "Excellent",
+            rating: item.rating !== undefined ? Number(item.rating) : 5.0,
+            reviewsCount: item.reviewsCount !== undefined ? Number(item.reviewsCount) : 0,
+            specs: item.specs || {},
+            owner: item.owner || {
+              name: item.ownerName || "Equipment Owner",
+              company: "Equipment Fleet LLC",
+              rating: 5.0,
+              responseTime: "Within 1 hour",
+              verified: true,
+              location: item.location || "",
+              totalRentals: 0,
+            },
+            description: item.description || "",
+            applications: Array.isArray(item.applications) ? item.applications : [],
+            rentalTerms: item.rentalTerms || {
+              securityDeposit: 500,
+              damageWaiver: "Optional Comprehensive Damage Protection",
+              cancellationPolicy: "Free cancellation up to 48 hours before scheduled start",
+              operatingHoursAllowed: "8 engine hours per daily rate included",
+              deliveryAvailable: true,
+            },
+          };
+
+          setEquipment(loadedEquip);
+          if (imageVal) {
+            setSelectedImage(imageVal);
+          }
         }
       } catch (err) {
-        // Fallback to mock details
+        console.warn("Could not fetch equipment details from backend:", err);
+        if (isMounted) setEquipment(null);
+      } finally {
+        if (isMounted) setIsPageLoading(false);
       }
     };
 
@@ -179,6 +167,60 @@ function EquipmentDetailsContent() {
       isMounted = false;
     };
   }, [id]);
+
+  // 2. On page load, check if this item is in the logged-in user's favorites from GET /api/favorites/:email
+  React.useEffect(() => {
+    let isMounted = true;
+    const checkFavoriteStatus = async () => {
+      if (!session?.user?.email) return;
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("access-token");
+        if (!token) {
+          await syncUserAndFetchJwt({
+            email: session.user.email,
+            name: session.user.name || undefined,
+            image: session.user.image || undefined,
+            role: (session.user as any)?.role || "customer",
+          });
+        }
+
+        const res = await axiosSecure.get(
+          `${apiUrl}/api/favorites/${encodeURIComponent(session.user.email)}`
+        );
+
+        if (isMounted && Array.isArray(res.data)) {
+          const match = res.data.find(
+            (fav: any) =>
+              fav.equipmentId === id ||
+              fav.equipmentId?.toString() === id.toString() ||
+              fav.equipment?._id === id ||
+              fav.equipment?._id?.toString() === id.toString() ||
+              (equipment?._id &&
+                (fav.equipmentId === equipment._id ||
+                  fav.equipment?._id === equipment._id))
+          );
+
+          if (match) {
+            setIsFavorited(true);
+            setFavoriteId(match._id);
+          } else {
+            setIsFavorited(false);
+            setFavoriteId(null);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not check favorite status from backend:", err);
+      }
+    };
+
+    checkFavoriteStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user?.email, id, equipment?._id]);
 
   // Set min dates to today
   const todayStr = new Date().toISOString().split("T")[0];
@@ -194,38 +236,61 @@ function EquipmentDetailsContent() {
   };
 
   const durationDays = calculateDurationDays();
-  const baseRentalSubtotal = equipment.rentalPrice * durationDays * requiredQuantity;
+  const rentalPrice = equipment?.rentalPrice || 0;
+  const baseRentalSubtotal = rentalPrice * durationDays * requiredQuantity;
   const damageWaiverFee = Math.round(baseRentalSubtotal * 0.08); // 8% waiver fee
-  const securityDeposit = equipment.rentalTerms?.securityDeposit || 500;
+  const securityDeposit = equipment?.rentalTerms?.securityDeposit || 500;
   const estimatedTotal = baseRentalSubtotal + damageWaiverFee;
 
-  // Handle Add to Favorites
+  // 3. Handle Add to Favorites / Toggle
   const handleToggleFavorite = async () => {
+    if (!equipment) return;
+    if (!session?.user?.email) {
+      toast.error("Please sign in to save equipment to your favorites.");
+      return;
+    }
+
     try {
       setIsFavoriteLoading(true);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-      const res = await axiosSecure.post(`${apiUrl}/api/favorites`, {
-        equipmentId: equipment._id,
-        equipmentName: equipment.name,
-        price: equipment.rentalPrice,
-        image: equipment.image,
-      });
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("access-token");
+      if (!token) {
+        await syncUserAndFetchJwt({
+          email: session.user.email,
+          name: session.user.name || undefined,
+          image: session.user.image || undefined,
+          role: (session.user as any)?.role || "customer",
+        });
+      }
 
-      setIsFavorited(!isFavorited);
-      toast.success(
-        isFavorited
-          ? "Removed from your saved equipment."
-          : "Added to your favorites list!"
-      );
+      if (isFavorited) {
+        // DELETE /api/favorites/:id
+        const targetId = favoriteId || id;
+        await axiosSecure.delete(`${apiUrl}/api/favorites/${targetId}`);
+        setIsFavorited(false);
+        setFavoriteId(null);
+        toast.success("Removed from your saved equipment.");
+      } else {
+        // POST /api/favorites
+        const res = await axiosSecure.post(`${apiUrl}/api/favorites`, {
+          userEmail: session.user.email,
+          equipmentId: equipment._id || id,
+        });
+
+        const newFavId = res.data?.favoriteId || res.data?._id;
+        if (newFavId) {
+          setFavoriteId(newFavId);
+        }
+        setIsFavorited(true);
+        toast.success("Added to your favorites list!");
+      }
     } catch (error: any) {
-      // Optimistic update for smooth demo
-      setIsFavorited(!isFavorited);
-      toast.success(
-        isFavorited
-          ? "Removed from your saved equipment."
-          : "Saved to your favorites!"
-      );
+      console.error("Favorite toggle error:", error);
+      const errMsg =
+        error.response?.data?.message || "Failed to update favorite status.";
+      toast.error(errMsg);
     } finally {
       setIsFavoriteLoading(false);
     }
@@ -234,6 +299,10 @@ function EquipmentDetailsContent() {
   // Handle Booking & Stripe Checkout Redirect
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!equipment) {
+      toast.error("Equipment information is still loading.");
+      return;
+    }
 
     if (!startDate) {
       toast.error("Please select a rental start date.");
@@ -268,22 +337,40 @@ function EquipmentDetailsContent() {
       setIsCheckoutLoading(true);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+      // Ensure user has valid JWT token in localStorage before checkout
+      if (typeof window !== "undefined" && session?.user?.email) {
+        const token = localStorage.getItem("token") || localStorage.getItem("access-token");
+        if (!token) {
+          await syncUserAndFetchJwt({
+            email: session.user.email,
+            name: session.user.name,
+            image: session.user.image || undefined,
+            role: (session.user as any)?.role || "customer",
+          });
+        }
+      }
+
       const bookingPayload = {
         equipmentId: equipment._id,
         equipmentName: equipment.name,
         category: equipment.category,
         image: equipment.image,
+        equipmentImage: equipment.image,
         startDate,
         endDate,
         durationDays,
+        rentalDays: durationDays,
         quantity: requiredQuantity,
         contactNumber: contactNumber.trim(),
         deliveryAddress: deliveryAddress.trim(),
         additionalNotes: additionalNotes.trim(),
         pricePerDay: equipment.rentalPrice,
+        price: estimatedTotal,
         subtotal: baseRentalSubtotal,
         damageWaiverFee,
         totalAmount: estimatedTotal,
+        totalPrice: estimatedTotal,
+        ownerEmail: equipment.owner?.email || (equipment as any)?.ownerEmail || "",
         userEmail: session?.user?.email,
         userName: session?.user?.name,
       };
@@ -293,29 +380,58 @@ function EquipmentDetailsContent() {
         bookingPayload
       );
 
-      toast.success("Checkout initialized! Redirecting to payment...");
+      const targetUrl = response.data?.url || response.data?.checkoutUrl;
 
-      if (response.data?.checkoutUrl || response.data?.url) {
-        window.location.href = response.data.checkoutUrl || response.data.url;
+      if (targetUrl) {
+        toast.success("Redirecting to Stripe payment checkout...");
+        window.location.href = targetUrl;
+        return;
       } else {
-        // Fallback simulation to test the payment success route seamlessly
-        const mockSessionId = `cs_test_${Date.now()}`;
-        router.push(
-          `/payment/success?session_id=${mockSessionId}&equipment_id=${equipment._id}&amount=${estimatedTotal}`
-        );
+        toast.error("Failed to generate Stripe checkout session. Please try again.");
       }
     } catch (error: any) {
-      console.warn("Backend checkout call note:", error);
-      // Fallback simulation for live demonstration
-      toast.success("Proceeding to payment confirmation...");
-      const mockSessionId = `cs_test_${Date.now()}`;
-      router.push(
-        `/payment/success?session_id=${mockSessionId}&equipment_id=${equipment._id}&amount=${estimatedTotal}`
-      );
+      console.error("Backend checkout call error:", error);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Payment service unreachable. Please ensure the backend server is running.";
+      toast.error(errorMsg);
     } finally {
       setIsCheckoutLoading(false);
     }
   };
+
+  if (isPageLoading) {
+    return (
+      <PrivateRoute>
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
+          <Loader2 className="size-10 animate-spin text-emerald-600 mb-4" />
+          <p className="text-sm font-medium text-muted-foreground">Loading equipment specifications...</p>
+        </div>
+      </PrivateRoute>
+    );
+  }
+
+  if (!equipment) {
+    return (
+      <PrivateRoute>
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 text-center">
+          <AlertCircle className="size-12 text-rose-500 mb-4" />
+          <h2 className="text-2xl font-bold text-foreground">Equipment Not Found</h2>
+          <p className="mt-2 text-sm text-muted-foreground max-w-md">
+            The requested equipment could not be found or has been removed from the platform.
+          </p>
+          <Link
+            href="/equipment"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+            <span>Back to Equipment Catalog</span>
+          </Link>
+        </div>
+      </PrivateRoute>
+    );
+  }
 
   return (
     <PrivateRoute>
@@ -343,11 +459,15 @@ function EquipmentDetailsContent() {
                     : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <Heart
-                  className={`size-3.5 ${
-                    isFavorited ? "fill-red-500 text-red-500" : "text-muted-foreground"
-                  }`}
-                />
+                {isFavoriteLoading ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Heart
+                    className={`size-3.5 ${
+                      isFavorited ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                    }`}
+                  />
+                )}
                 <span>{isFavorited ? "Favorited" : "Save to Favorites"}</span>
               </button>
             </div>

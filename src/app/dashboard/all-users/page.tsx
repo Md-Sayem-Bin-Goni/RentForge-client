@@ -36,98 +36,6 @@ interface PlatformUser {
   location?: string;
 }
 
-// Fallback users for resilient administrative preview
-const MOCK_USERS: PlatformUser[] = [
-  {
-    _id: "usr-101",
-    name: "Alexander Wright",
-    email: "alexander@rentforge.com",
-    role: "admin",
-    image:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-    createdAt: "2026-08-14",
-    phone: "+1 (312) 555-0100",
-    location: "Chicago, IL",
-  },
-  {
-    _id: "usr-102",
-    name: "Marcus Vance",
-    email: "m.vance@apexconstruct.com",
-    role: "customer",
-    image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
-    createdAt: "2026-09-02",
-    phone: "+1 (312) 555-0192",
-    location: "Chicago, IL",
-  },
-  {
-    _id: "usr-103",
-    name: "Elena Rostova",
-    email: "elena@luminafilms.io",
-    role: "customer",
-    image:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
-    createdAt: "2026-09-18",
-    phone: "+1 (310) 555-0144",
-    location: "Los Angeles, CA",
-  },
-  {
-    _id: "usr-104",
-    name: "David Sterling",
-    email: "david@sterlingsteel.com",
-    role: "owner",
-    image:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
-    createdAt: "2026-09-24",
-    phone: "+1 (214) 555-0188",
-    location: "Dallas, TX",
-  },
-  {
-    _id: "usr-105",
-    name: "Sarah Jenkins",
-    email: "sarah.j@windycityexcavation.com",
-    role: "owner",
-    image:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
-    createdAt: "2026-10-05",
-    phone: "+1 (312) 555-0118",
-    location: "Chicago, IL",
-  },
-  {
-    _id: "usr-106",
-    name: "Julian Rivera",
-    email: "julian@riveramedia.net",
-    role: "customer",
-    image:
-      "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=200&q=80",
-    createdAt: "2026-10-12",
-    phone: "+1 (818) 555-0177",
-    location: "Los Angeles, CA",
-  },
-  {
-    _id: "usr-107",
-    name: "Cynthia Morales",
-    email: "cynthia@moralesagri.org",
-    role: "owner",
-    image:
-      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
-    createdAt: "2026-10-20",
-    phone: "+1 (515) 555-0129",
-    location: "Des Moines, IA",
-  },
-  {
-    _id: "usr-108",
-    name: "Tariq Bennett",
-    email: "tariq@skylineelectric.com",
-    role: "customer",
-    image:
-      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80",
-    createdAt: "2026-11-01",
-    phone: "+1 (404) 555-0165",
-    location: "Atlanta, GA",
-  },
-];
-
 export default function AllUsersAdminPage() {
   const { data: session } = useSession();
 
@@ -148,14 +56,14 @@ export default function AllUsersAdminPage() {
       const res = await axiosSecure.get(`${apiUrl}/api/users`);
       const data = res.data?.users || res.data?.data || res.data;
 
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setUsers(data);
       } else {
-        setUsers(MOCK_USERS);
+        setUsers([]);
       }
     } catch (err) {
-      console.warn("Could not fetch users from backend; using mock fallback:", err);
-      setUsers(MOCK_USERS);
+      console.warn("Could not fetch users from backend:", err);
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -187,7 +95,7 @@ export default function AllUsersAdminPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const encodedEmail = encodeURIComponent(targetUser.email);
 
-      // Attempt PATCH to /api/users/:email or /api/users/:email/role
+      // Persist role update to MongoDB across both 'users' and 'user' collections
       await axiosSecure.patch(`${apiUrl}/api/users/${encodedEmail}`, {
         role: newRole,
       });
@@ -196,16 +104,13 @@ export default function AllUsersAdminPage() {
         prev.map((u) => (u._id === targetUser._id ? { ...u, role: newRole } : u))
       );
       toast.success(
-        `Role for "${targetUser.name}" successfully updated to ${newRole.toUpperCase()}.`
+        `Role for "${targetUser.name}" successfully updated to ${newRole.toUpperCase()} in MongoDB!`
       );
-    } catch (err) {
-      // Local fallback
-      setUsers((prev) =>
-        prev.map((u) => (u._id === targetUser._id ? { ...u, role: newRole } : u))
-      );
-      toast.success(
-        `Role for "${targetUser.name}" updated to ${newRole.toUpperCase()} (local session updated).`
-      );
+    } catch (err: any) {
+      console.error("Failed to update user role in MongoDB:", err);
+      const errMsg =
+        err.response?.data?.message || err.message || "Failed to update user role in database.";
+      toast.error(errMsg);
     } finally {
       setUpdatingUserId(null);
     }

@@ -60,130 +60,6 @@ const CATEGORIES = [
   "Event Equipment",
 ];
 
-// Fallback listings for admin catalog
-const MOCK_ADMIN_EQUIPMENT: AdminEquipmentItem[] = [
-  {
-    _id: "eq-201",
-    name: "CAT 308 CR Mini Hydraulic Excavator",
-    category: "Construction Equipment",
-    brand: "Caterpillar",
-    model: "308 CR",
-    rentalPrice: 320,
-    rentalType: "Daily",
-    availableQuantity: 2,
-    location: "Chicago, IL",
-    image:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=400&q=80",
-    status: "Approved",
-    ownerName: "David Sterling",
-    ownerEmail: "david@sterlingsteel.com",
-    condition: "Excellent",
-    description: "Compact radius swing excavator with thumb clamp, enclosed cab with AC, and rubber tracks.",
-    rentalTerms: "Operator certification required. Return with full diesel fuel.",
-    createdAt: "2026-11-15",
-  },
-  {
-    _id: "eq-202",
-    name: "RED V-Raptor 8K VV Cinema Package",
-    category: "Photography Equipment",
-    brand: "RED Digital Cinema",
-    model: "V-Raptor 8K VV",
-    rentalPrice: 450,
-    rentalType: "Daily",
-    availableQuantity: 1,
-    location: "Los Angeles, CA",
-    image:
-      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=400&q=80",
-    status: "Approved",
-    ownerName: "Sarah Jenkins",
-    ownerEmail: "sarah.j@windycityexcavation.com",
-    condition: "Like New",
-    description: "Multi-format 8K sensor package with CFexpress media, cage, top handle, and Gold Mount plate.",
-    rentalTerms: "COI certificate required. Studio dispatch only.",
-    createdAt: "2026-11-12",
-  },
-  {
-    _id: "eq-207",
-    name: "Bobcat S650 Skid-Steer Loader",
-    category: "Construction Equipment",
-    brand: "Bobcat",
-    model: "S650 Tier 4",
-    rentalPrice: 275,
-    rentalType: "Daily",
-    availableQuantity: 3,
-    location: "Denver, CO",
-    image:
-      "https://images.unsplash.com/photo-1580983559367-5b6515b02660?auto=format&fit=crop&w=400&q=80",
-    status: "Pending",
-    ownerName: "David Sterling",
-    ownerEmail: "david@sterlingsteel.com",
-    condition: "Excellent",
-    description: "Vertical lift path skid steer loader equipped with high flow hydraulics and heavy duty dirt bucket.",
-    rentalTerms: "Daily inspection logs required. Cleaning fee if returned muddy.",
-    createdAt: "2026-11-19",
-  },
-  {
-    _id: "eq-208",
-    name: "DJI Inspire 3 Cinema Drone Combo",
-    category: "Photography Equipment",
-    brand: "DJI Pro",
-    model: "Inspire 3 8K",
-    rentalPrice: 520,
-    rentalType: "Daily",
-    availableQuantity: 1,
-    location: "Miami, FL",
-    image:
-      "https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=400&q=80",
-    status: "Pending",
-    ownerName: "Sarah Jenkins",
-    ownerEmail: "sarah.j@windycityexcavation.com",
-    condition: "Brand New",
-    description: "Full-frame 8K ProRes RAW cinema drone kit with RC Plus controller and TB51 intelligent batteries.",
-    rentalTerms: "FAA Part 107 license copy required before dispatch.",
-    createdAt: "2026-11-20",
-  },
-  {
-    _id: "eq-209",
-    name: "Multiquip 6000W Mobile Light Tower",
-    category: "Event Equipment",
-    brand: "Multiquip",
-    model: "LT6K",
-    rentalPrice: 650,
-    rentalType: "Weekly",
-    availableQuantity: 2,
-    location: "Austin, TX",
-    image:
-      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=400&q=80",
-    status: "Rejected",
-    ownerName: "Cynthia Morales",
-    ownerEmail: "cynthia@moralesagri.org",
-    condition: "Fair",
-    description: "Four 1000-watt metal halide lamps with 30-foot mast and diesel engine generator.",
-    rentalTerms: "Missing certified emissions sticker.",
-    createdAt: "2026-11-08",
-  },
-  {
-    _id: "eq-204",
-    name: "John Deere 5075E Utility Tractor",
-    category: "Agriculture Equipment",
-    brand: "John Deere",
-    model: "5075E MFWD",
-    rentalPrice: 280,
-    rentalType: "Daily",
-    availableQuantity: 1,
-    location: "Des Moines, IA",
-    image:
-      "https://images.unsplash.com/photo-1592985706246-a4422e845c85?auto=format&fit=crop&w=400&q=80",
-    status: "Approved",
-    ownerName: "Cynthia Morales",
-    ownerEmail: "cynthia@moralesagri.org",
-    condition: "Excellent",
-    description: "75HP utility tractor with front loader attachment and 3-point rear hitch.",
-    rentalTerms: "Agricultural or municipal use only.",
-    createdAt: "2026-11-04",
-  },
-];
-
 export default function AllEquipmentAdminPage() {
   const [equipmentList, setEquipmentList] = React.useState<AdminEquipmentItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -229,14 +105,14 @@ export default function AllEquipmentAdminPage() {
       const res = await axiosSecure.get(`${apiUrl}/api/equipment?all=true`);
       const items = res.data?.equipment || res.data?.data || res.data;
 
-      if (Array.isArray(items) && items.length > 0) {
+      if (Array.isArray(items)) {
         setEquipmentList(items);
       } else {
-        setEquipmentList(MOCK_ADMIN_EQUIPMENT);
+        setEquipmentList([]);
       }
     } catch (err) {
       console.warn("Could not fetch admin equipment catalog from backend:", err);
-      setEquipmentList(MOCK_ADMIN_EQUIPMENT);
+      setEquipmentList([]);
     } finally {
       setIsLoading(false);
     }

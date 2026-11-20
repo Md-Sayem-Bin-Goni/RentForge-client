@@ -42,214 +42,6 @@ export interface EquipmentItem {
   createdAt?: string;
 }
 
-// Fallback catalog of 12 approved items for robust development and offline preview
-const MOCK_EQUIPMENT_CATALOG: EquipmentItem[] = [
-  {
-    _id: "eq-201",
-    name: "CAT 308 CR Mini Hydraulic Excavator",
-    category: "Construction Equipment",
-    image:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 320,
-    rentalType: "Daily",
-    location: "Chicago, IL",
-    isAvailable: true,
-    status: "approved",
-    rating: 4.95,
-    reviewsCount: 38,
-    ownerName: "Apex Heavy Iron",
-    specs: ["8.5 Ton", "Diesel", "A/C Cab"],
-    createdAt: "2026-11-01",
-  },
-  {
-    _id: "eq-202",
-    name: "RED V-Raptor 8K VV Cinema Package",
-    category: "Photography Equipment",
-    image:
-      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 450,
-    rentalType: "Daily",
-    location: "Los Angeles, CA",
-    isAvailable: true,
-    status: "approved",
-    rating: 5.0,
-    reviewsCount: 24,
-    ownerName: "CineVault Studios",
-    specs: ["8K VistaVision", "PL Mount", "Cards & Mags"],
-    createdAt: "2026-11-05",
-  },
-  {
-    _id: "eq-203",
-    name: "JLG 600AJ 60ft Articulating Boom Lift",
-    category: "Construction Equipment",
-    image:
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 1350,
-    rentalType: "Weekly",
-    location: "Dallas, TX",
-    isAvailable: true,
-    status: "approved",
-    rating: 4.9,
-    reviewsCount: 19,
-    ownerName: "SkyHigh Rentals",
-    specs: ["60ft Height", "4WD Diesel", "Dual Fuel"],
-    createdAt: "2026-10-28",
-  },
-  {
-    _id: "eq-204",
-    name: "John Deere 6155M Utility Tractor",
-    category: "Agriculture Equipment",
-    image:
-      "https://images.unsplash.com/photo-1530267981375-f0de937f5f13?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 290,
-    rentalType: "Daily",
-    location: "Des Moines, IA",
-    isAvailable: false,
-    status: "approved",
-    rating: 4.88,
-    reviewsCount: 15,
-    ownerName: "Heartland Agritech",
-    specs: ["155 HP Engine", "AutoTrac", "Hydraulic Hitch"],
-    createdAt: "2026-10-15",
-  },
-  {
-    _id: "eq-205",
-    name: "Cummins 100kW Towable Quiet Generator",
-    category: "Electronics",
-    image:
-      "https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 210,
-    rentalType: "Daily",
-    location: "Atlanta, GA",
-    isAvailable: true,
-    status: "approved",
-    rating: 4.92,
-    reviewsCount: 31,
-    ownerName: "VoltGrid Power",
-    specs: ["100 kVA", "Sound Attenuated", "68h Tank"],
-    createdAt: "2026-11-10",
-  },
-  {
-    _id: "eq-206",
-    name: "Ford F-550 Crew Cab 4x4 Utility Truck",
-    category: "Vehicles & Transportation",
-    image:
-      "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 85,
-    rentalType: "Hourly",
-    location: "Denver, CO",
-    isAvailable: true,
-    status: "approved",
-    rating: 4.96,
-    reviewsCount: 42,
-    ownerName: "Summit Fleet Logistics",
-    specs: ["6.7L Turbo Diesel", "Hydraulic Crane", "Tool Beds"],
-    createdAt: "2026-11-08",
-  },
-  {
-    _id: "eq-207",
-    name: "Bobcat T770 Compact Track Loader",
-    category: "Construction Equipment",
-    image:
-      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 275,
-    rentalType: "Daily",
-    location: "Phoenix, AZ",
-    isAvailable: true,
-    status: "approved",
-    rating: 4.89,
-    reviewsCount: 22,
-    ownerName: "Desert Iron Works",
-    specs: ["92 HP", "High Flow Hydraulics", "Rubber Tracks"],
-    createdAt: "2026-11-04",
-  },
-  {
-    _id: "eq-208",
-    name: "Sony FX9 Full-Frame Cinema Camera Kit",
-    category: "Photography Equipment",
-    image:
-      "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 380,
-    rentalType: "Daily",
-    location: "New York, NY",
-    isAvailable: true,
-    status: "approved",
-    rating: 4.97,
-    reviewsCount: 35,
-    ownerName: "Manhattan Cine Rental",
-    specs: ["6K Full-Frame", "Fast Hybrid AF", "Dual Base ISO"],
-    createdAt: "2026-11-12",
-  },
-  {
-    _id: "eq-209",
-    name: "L-Acoustics K2 Line Array Concert System",
-    category: "Event Equipment",
-    image:
-      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 2800,
-    rentalType: "Weekly",
-    location: "Austin, TX",
-    isAvailable: true,
-    status: "approved",
-    rating: 5.0,
-    reviewsCount: 18,
-    ownerName: "Lone Star Pro Audio",
-    specs: ["12x K2 Enclosures", "Amps Included", "Rigging Bumpers"],
-    createdAt: "2026-10-20",
-  },
-  {
-    _id: "eq-210",
-    name: "Case IH 8250 Axial-Flow Combine Harvester",
-    category: "Agriculture Equipment",
-    image:
-      "https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 4200,
-    rentalType: "Monthly",
-    location: "Omaha, NE",
-    isAvailable: false,
-    status: "approved",
-    rating: 4.85,
-    reviewsCount: 11,
-    ownerName: "Plains Ag Equipment",
-    specs: ["480 HP", "Harvest Command", "40ft Draper Ready"],
-    createdAt: "2026-09-18",
-  },
-  {
-    _id: "eq-211",
-    name: "DJI Matrice 350 RTK Industrial Drone Package",
-    category: "Electronics",
-    image:
-      "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 195,
-    rentalType: "Daily",
-    location: "Seattle, WA",
-    isAvailable: true,
-    status: "approved",
-    rating: 4.94,
-    reviewsCount: 29,
-    ownerName: "Northwest Drone Fleet",
-    specs: ["Thermal H20T Camera", "55 Min Flight Time", "IP55 Rating"],
-    createdAt: "2026-11-15",
-  },
-  {
-    _id: "eq-212",
-    name: "Peterbilt 389 Heavy Haul Lowboy Tractor",
-    category: "Vehicles & Transportation",
-    image:
-      "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=900&q=80",
-    rentalPrice: 3500,
-    rentalType: "Monthly",
-    location: "Houston, TX",
-    isAvailable: true,
-    status: "approved",
-    rating: 4.98,
-    reviewsCount: 20,
-    ownerName: "Gulf Coast Hauling",
-    specs: ["Cummins X15 605 HP", "18 Speed", "55 Ton Capacity"],
-    createdAt: "2026-10-12",
-  },
-];
-
 const CATEGORIES = [
   "All Categories",
   "Construction Equipment",
@@ -283,12 +75,10 @@ function EquipmentContent() {
   const itemsPerPage = 6;
 
   // Data & Loading state
-  const [equipmentList, setEquipmentList] = React.useState<EquipmentItem[]>(MOCK_EQUIPMENT_CATALOG);
-  const [totalCount, setTotalCount] = React.useState(MOCK_EQUIPMENT_CATALOG.length);
-  const [totalPages, setTotalPages] = React.useState(
-    Math.ceil(MOCK_EQUIPMENT_CATALOG.length / itemsPerPage)
-  );
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [equipmentList, setEquipmentList] = React.useState<EquipmentItem[]>([]);
+  const [totalCount, setTotalCount] = React.useState(0);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [showFiltersMobile, setShowFiltersMobile] = React.useState(false);
 
   // Debounce search input
@@ -330,90 +120,64 @@ function EquipmentContent() {
         const response = await axios.get(`${apiUrl}/api/equipment`, { params });
 
         if (!isCancelled && response.data) {
-          const rawItems = Array.isArray(response.data)
-            ? response.data
-            : response.data.equipment || response.data.items || [];
+          const rawItems =
+            response.data.data ||
+            response.data.equipment ||
+            response.data.items ||
+            (Array.isArray(response.data) ? response.data : []);
 
-          const serverTotal = response.data.totalCount || response.data.total || rawItems.length;
-          const serverPages = response.data.totalPages || Math.ceil(serverTotal / itemsPerPage) || 1;
+          const serverTotal =
+            response.data.totalCount !== undefined
+              ? response.data.totalCount
+              : response.data.total !== undefined
+              ? response.data.total
+              : rawItems.length;
+          const serverPages =
+            response.data.totalPages ||
+            Math.ceil(serverTotal / itemsPerPage) ||
+            1;
 
-          setEquipmentList(rawItems);
+          const normalized = rawItems.map((it: any) => {
+            const specsArr = Array.isArray(it.specs)
+              ? it.specs
+              : typeof it.specs === "object" && it.specs !== null
+              ? Object.entries(it.specs).map(([k, v]) => `${k}: ${v}`)
+              : [];
+
+            return {
+              ...it,
+              name: it.name || it.title || "Equipment Item",
+              image:
+                it.image ||
+                it.equipmentImage ||
+                (Array.isArray(it.images) && it.images.length > 0 ? it.images[0] : ""),
+              rentalPrice: Number(it.rentalPrice ?? it.price ?? it.pricePerDay ?? 0),
+              price: Number(it.price ?? it.rentalPrice ?? it.pricePerDay ?? 0),
+              specs: specsArr,
+              ownerName: it.ownerName || it.owner?.name || "Equipment Owner",
+              location: it.location || "Available Nationwide",
+              rating: it.rating !== undefined ? Number(it.rating) : 5.0,
+              reviewsCount: it.reviewsCount !== undefined ? Number(it.reviewsCount) : 0,
+            };
+          });
+
+          setEquipmentList(normalized);
           setTotalCount(serverTotal);
           setTotalPages(serverPages);
           setIsLoading(false);
           return;
         }
       } catch (err) {
-        // Fallback to client-side filtering on mock catalog for resilient UX
-      }
-
-      // Client-side fallback filter
-      if (!isCancelled) {
-        let filtered = [...MOCK_EQUIPMENT_CATALOG];
-
-        // Search Name & Location
-        if (debouncedSearch.trim()) {
-          const query = debouncedSearch.toLowerCase().trim();
-          filtered = filtered.filter(
-            (item) =>
-              item.name.toLowerCase().includes(query) ||
-              item.location.toLowerCase().includes(query) ||
-              item.category.toLowerCase().includes(query)
-          );
+        console.warn("Could not fetch equipment catalog from backend:", err);
+        if (!isCancelled) {
+          setEquipmentList([]);
+          setTotalCount(0);
+          setTotalPages(1);
         }
-
-        // Category filter
-        if (selectedCategory !== "All Categories") {
-          filtered = filtered.filter(
-            (item) => item.category.toLowerCase() === selectedCategory.toLowerCase()
-          );
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
         }
-
-        // Rental Type filter
-        if (selectedRentalType !== "All Types") {
-          filtered = filtered.filter(
-            (item) => item.rentalType.toLowerCase() === selectedRentalType.toLowerCase()
-          );
-        }
-
-        // Price range filter
-        if (minPrice !== "") {
-          filtered = filtered.filter((item) => item.rentalPrice >= Number(minPrice));
-        }
-        if (maxPrice !== "") {
-          filtered = filtered.filter((item) => item.rentalPrice <= Number(maxPrice));
-        }
-
-        // Available Only filter
-        if (availableOnly) {
-          filtered = filtered.filter((item) => item.isAvailable);
-        }
-
-        // Sorting
-        if (sortBy === "price_asc") {
-          filtered.sort((a, b) => a.rentalPrice - b.rentalPrice);
-        } else if (sortBy === "price_desc") {
-          filtered.sort((a, b) => b.rentalPrice - a.rentalPrice);
-        } else {
-          // Newest
-          filtered.sort(
-            (a, b) =>
-              new Date(b.createdAt || "2026-11-01").getTime() -
-              new Date(a.createdAt || "2026-11-01").getTime()
-          );
-        }
-
-        const calculatedTotal = filtered.length;
-        const calculatedPages = Math.ceil(calculatedTotal / itemsPerPage) || 1;
-
-        // Paginate slice
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const paginatedSlice = filtered.slice(startIndex, startIndex + itemsPerPage);
-
-        setEquipmentList(paginatedSlice);
-        setTotalCount(calculatedTotal);
-        setTotalPages(calculatedPages);
-        setIsLoading(false);
       }
     };
 
@@ -833,14 +597,21 @@ function EquipmentContent() {
 
                     {/* Machine Specs Badges */}
                     <div className="mt-3 flex flex-wrap gap-1.5">
-                      {item.specs?.slice(0, 3).map((spec, i) => (
-                        <span
-                          key={i}
-                          className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                        >
-                          {spec}
-                        </span>
-                      ))}
+                      {(Array.isArray(item.specs)
+                        ? item.specs
+                        : typeof item.specs === "object" && item.specs
+                        ? Object.values(item.specs)
+                        : []
+                      )
+                        .slice(0, 3)
+                        .map((spec: any, i: number) => (
+                          <span
+                            key={i}
+                            className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                          >
+                            {spec}
+                          </span>
+                        ))}
                     </div>
                   </div>
 

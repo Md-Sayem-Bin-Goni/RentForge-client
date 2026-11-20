@@ -60,145 +60,6 @@ interface PlatformBooking {
   notes?: string;
 }
 
-// Fallback platform bookings for admin oversight
-const MOCK_PLATFORM_BOOKINGS: PlatformBooking[] = [
-  {
-    _id: "pbk-701",
-    equipmentId: "eq-201",
-    equipmentName: "CAT 308 CR Mini Hydraulic Excavator",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=400&q=80",
-    category: "Construction Equipment",
-    customer: {
-      name: "Marcus Vance",
-      email: "m.vance@apexconstruct.com",
-      phone: "+1 (312) 555-0192",
-    },
-    owner: {
-      name: "David Sterling",
-      email: "david@sterlingsteel.com",
-    },
-    startDate: "2026-11-24",
-    endDate: "2026-11-28",
-    durationDays: 4,
-    quantity: 1,
-    totalAmount: 1382,
-    paymentStatus: "Paid",
-    bookingStatus: "In Use",
-    bookingDate: "2026-11-20",
-    deliveryAddress: "Midwest Logistics Park Gate 3, Chicago, IL",
-    notes: "Requires rubber tracks for finished asphalt approach. Gate code: #4920.",
-  },
-  {
-    _id: "pbk-702",
-    equipmentId: "eq-202",
-    equipmentName: "RED V-Raptor 8K VV Cinema Package",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=400&q=80",
-    category: "Photography Equipment",
-    customer: {
-      name: "Elena Rostova",
-      email: "elena@luminafilms.io",
-      phone: "+1 (310) 555-0144",
-    },
-    owner: {
-      name: "Sarah Jenkins",
-      email: "sarah.j@windycityexcavation.com",
-    },
-    startDate: "2026-12-02",
-    endDate: "2026-12-05",
-    durationDays: 3,
-    quantity: 1,
-    totalAmount: 1458,
-    paymentStatus: "Paid",
-    bookingStatus: "Confirmed",
-    bookingDate: "2026-11-19",
-    deliveryAddress: "Soundstage B, Sunset Gower Studios, Los Angeles, CA",
-    notes: "Please include both Gold Mount batteries and dual-bay charger.",
-  },
-  {
-    _id: "pbk-703",
-    equipmentId: "eq-203",
-    equipmentName: "JLG 600AJ 60ft Articulating Boom Lift",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80",
-    category: "Construction Equipment",
-    customer: {
-      name: "Julian Rivera",
-      email: "julian@riveramedia.net",
-      phone: "+1 (818) 555-0177",
-    },
-    owner: {
-      name: "David Sterling",
-      email: "david@sterlingsteel.com",
-    },
-    startDate: "2026-12-08",
-    endDate: "2026-12-15",
-    durationDays: 7,
-    quantity: 1,
-    totalAmount: 1471,
-    paymentStatus: "Escrow Hold",
-    bookingStatus: "Confirmed",
-    bookingDate: "2026-11-18",
-    deliveryAddress: "Amazon Fulfillment Center Phase II, Fort Worth, TX",
-    notes: "Requires OSHA certification badge for driver upon gate entry.",
-  },
-  {
-    _id: "pbk-704",
-    equipmentId: "eq-204",
-    equipmentName: "John Deere 5075E Utility Tractor",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1592985706246-a4422e845c85?auto=format&fit=crop&w=400&q=80",
-    category: "Agriculture Equipment",
-    customer: {
-      name: "Tariq Bennett",
-      email: "tariq@skylineelectric.com",
-      phone: "+1 (404) 555-0165",
-    },
-    owner: {
-      name: "Cynthia Morales",
-      email: "cynthia@moralesagri.org",
-    },
-    startDate: "2026-11-10",
-    endDate: "2026-11-14",
-    durationDays: 4,
-    quantity: 1,
-    totalAmount: 1209,
-    paymentStatus: "Paid",
-    bookingStatus: "Completed",
-    bookingDate: "2026-11-02",
-    deliveryAddress: "AgriPark Facility #3, Des Moines, IA",
-    notes: "Returned clean and inspected. Security deposit released.",
-  },
-  {
-    _id: "pbk-705",
-    equipmentId: "eq-202",
-    equipmentName: "RED V-Raptor 8K VV Cinema Package",
-    equipmentImage:
-      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=400&q=80",
-    category: "Photography Equipment",
-    customer: {
-      name: "Marcus Vance",
-      email: "m.vance@apexconstruct.com",
-      phone: "+1 (312) 555-0192",
-    },
-    owner: {
-      name: "Sarah Jenkins",
-      email: "sarah.j@windycityexcavation.com",
-    },
-    startDate: "2026-10-14",
-    endDate: "2026-10-16",
-    durationDays: 2,
-    quantity: 1,
-    totalAmount: 972,
-    paymentStatus: "Refunded",
-    bookingStatus: "Cancelled",
-    bookingDate: "2026-10-10",
-    deliveryAddress: "Universal CityWalk, Studio City, CA",
-    notes: "Cancelled due to severe rain forecast. Full refund confirmed by admin.",
-  },
-];
-
 export default function AllRentalsAdminPage() {
   const [bookings, setBookings] = React.useState<PlatformBooking[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -219,14 +80,14 @@ export default function AllRentalsAdminPage() {
       const res = await axiosSecure.get(`${apiUrl}/api/bookings`);
       const data = res.data?.bookings || res.data?.data || res.data;
 
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setBookings(data);
       } else {
-        setBookings(MOCK_PLATFORM_BOOKINGS);
+        setBookings([]);
       }
     } catch (err) {
-      console.warn("Could not fetch platform bookings; using fallback:", err);
-      setBookings(MOCK_PLATFORM_BOOKINGS);
+      console.warn("Could not fetch platform bookings:", err);
+      setBookings([]);
     } finally {
       setIsLoading(false);
     }

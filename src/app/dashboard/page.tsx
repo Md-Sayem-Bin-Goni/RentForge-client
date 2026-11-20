@@ -37,54 +37,41 @@ import {
 } from "recharts";
 import { useSession } from "@/lib/auth-client";
 import { axiosSecure } from "@/lib/axiosSecure";
-
-// Monthly Earnings Data for Owner Recharts
-const OWNER_MONTHLY_EARNINGS_DATA = [
-  { month: "Jun", earnings: 2850, completed: 3 },
-  { month: "Jul", earnings: 3400, completed: 4 },
-  { month: "Aug", earnings: 4120, completed: 5 },
-  { month: "Sep", earnings: 5200, completed: 6 },
-  { month: "Oct", earnings: 6150, completed: 7 },
-  { month: "Nov", earnings: 6840, completed: 8 },
-];
-
-// Category Rentals Breakdown for Owner BarChart
-const OWNER_CATEGORY_RENTALS_DATA = [
-  { category: "Construction", completed: 14, active: 4, revenue: 11200 },
-  { category: "Photography", completed: 8, active: 2, revenue: 4800 },
-  { category: "Heavy Vehicles", completed: 5, active: 1, revenue: 3200 },
-  { category: "Electronics", completed: 4, active: 1, revenue: 1800 },
-  { category: "Event Gear", completed: 3, active: 0, revenue: 1100 },
-];
-
-// Monthly Booking Statistics for Admin Recharts
-const ADMIN_MONTHLY_BOOKINGS_DATA = [
-  { month: "Jan", bookings: 28, revenue: 8400, completed: 25 },
-  { month: "Feb", bookings: 34, revenue: 10200, completed: 30 },
-  { month: "Mar", bookings: 42, revenue: 12600, completed: 39 },
-  { month: "Apr", bookings: 38, revenue: 11400, completed: 36 },
-  { month: "May", bookings: 51, revenue: 15300, completed: 47 },
-  { month: "Jun", bookings: 58, revenue: 17400, completed: 52 },
-  { month: "Jul", bookings: 64, revenue: 19200, completed: 59 },
-  { month: "Aug", bookings: 61, revenue: 18300, completed: 55 },
-  { month: "Sep", bookings: 55, revenue: 16500, completed: 50 },
-  { month: "Oct", bookings: 53, revenue: 15900, completed: 49 },
-  { month: "Nov", bookings: 58, revenue: 17400, completed: 51 },
-];
-
-// Platform Equipment Distribution for Admin BarChart
-const ADMIN_EQUIPMENT_STATUS_DATA = [
-  { category: "Construction", approved: 72, pending: 6 },
-  { category: "Photography", approved: 44, pending: 3 },
-  { category: "Heavy Vehicles", approved: 32, pending: 2 },
-  { category: "Electronics", approved: 22, pending: 2 },
-  { category: "Event Gear", approved: 16, pending: 1 },
-];
+import { toast } from "sonner";
 
 export default function DashboardOverviewPage() {
   const { data: session } = useSession();
   const [role, setRole] = React.useState<"customer" | "owner" | "admin">("customer");
+  const [favoritesCount, setFavoritesCount] = React.useState<number>(0);
   const [mounted, setMounted] = React.useState(false);
+
+  // Dynamic live statistics from MongoDB
+  const [adminStats, setAdminStats] = React.useState({
+    totalUsers: 0,
+    totalEquipment: 0,
+    totalBookings: 0,
+    pendingApprovals: 0,
+    completedRentals: 0,
+    totalRevenue: 0,
+    monthlyBookings: [] as Array<{ month: string; bookings: number; revenue: number }>,
+    equipmentDistribution: [] as Array<{ category: string; approved: number; pending: number }>,
+  });
+
+  const [ownerStats, setOwnerStats] = React.useState({
+    listedEquipment: 0,
+    completedRentals: 0,
+    totalEarnings: 0,
+    monthlyEarnings: 0,
+    monthlyEarningsData: [] as Array<{ month: string; earnings: number }>,
+    categoryRentalsData: [] as Array<{ category: string; completed: number; active: number; revenue: number }>,
+  });
+
+  const [customerStats, setCustomerStats] = React.useState({
+    activeRentals: 0,
+    activeRentalName: "No active rentals",
+    completedRentals: 0,
+    securityDeposit: 0,
+  });
 
   React.useEffect(() => {
     setMounted(true);
@@ -93,36 +80,191 @@ export default function DashboardOverviewPage() {
   React.useEffect(() => {
     let isCancelled = false;
 
-    const fetchRole = async () => {
+    const fetchDashboardData = async () => {
       if (!session?.user?.email) return;
 
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const email = encodeURIComponent(session.user.email);
-        const res = await axiosSecure.get(`${apiUrl}/api/users/${email}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const email = encodeURIComponent(session.user.email);
 
+      let currentRole = role;
+      try {
+        const res = await axiosSecure.get(`${apiUrl}/api/users/${email}`);
         if (!isCancelled && res.data) {
           const u = res.data.user || res.data;
           if (u.role) {
+            currentRole = u.role;
             setRole(u.role);
-            return;
           }
+        }
+      } catch (err) {
+        // Continue
+      }
+
+      // 1. Fetch dynamic favorites count
+      try {
+        const favRes = await axiosSecure.get(`${apiUrl}/api/favorites/${email}`);
+        if (!isCancelled && Array.isArray(favRes.data)) {
+          setFavoritesCount(favRes.data.length);
         }
       } catch (err) {
         // Fallback
       }
 
-      if (!isCancelled) {
+      // 2. Fetch role-specific real metrics
+      if (currentRole === "admin") {
+        try {
+          const [adminRes, equipRes] = await Promise.allSettled([
+            axiosSecure.get(`${apiUrl}/api/analytics/admin`),
+            axiosSecure.get(`${apiUrl}/api/equipment?all=true`),
+          ]);
+
+          if (!isCancelled && adminRes.status === "fulfilled" && adminRes.value.data) {
+            const data = adminRes.value.data;
+            const mb = Array.isArray(data.monthlyBookings) && data.monthlyBookings.length > 0
+              ? data.monthlyBookings
+              : [
+                  { month: "Jun", bookings: 0, revenue: 0 },
+                  { month: "Jul", bookings: 0, revenue: 0 },
+                  { month: "Aug", bookings: 0, revenue: 0 },
+                  { month: "Sep", bookings: 0, revenue: 0 },
+                  { month: "Oct", bookings: 0, revenue: 0 },
+                  { month: "Nov", bookings: data.totalBookings || 0, revenue: data.totalRevenue || 0 },
+                ];
+
+            let dist: Array<{ category: string; approved: number; pending: number }> = [];
+            if (equipRes.status === "fulfilled") {
+              const allItems = equipRes.value.data?.equipment || equipRes.value.data || [];
+              const cats = [
+                "Construction Equipment",
+                "Photography Equipment",
+                "Vehicles & Transportation",
+                "Agriculture Equipment",
+                "Electronics",
+                "Event Equipment",
+              ];
+              dist = cats.map((cat) => {
+                const inCat = Array.isArray(allItems) ? allItems.filter((it: any) => it.category === cat) : [];
+                const approved = inCat.filter(
+                  (it: any) => (it.status || "Approved").toLowerCase() === "approved"
+                ).length;
+                const pending = inCat.filter(
+                  (it: any) => (it.status || "").toLowerCase() === "pending"
+                ).length;
+                return {
+                  category: cat.replace(" Equipment", "").replace(" & Transportation", ""),
+                  approved,
+                  pending,
+                };
+              });
+            }
+
+            setAdminStats({
+              totalUsers: data.totalUsers || 0,
+              totalEquipment: data.totalEquipment || 0,
+              totalBookings: data.totalBookings || 0,
+              pendingApprovals: data.pendingApprovals || 0,
+              completedRentals: data.completedRentals || 0,
+              totalRevenue: data.totalRevenue || 0,
+              monthlyBookings: mb,
+              equipmentDistribution: dist,
+            });
+          }
+        } catch (err) {
+          console.warn("Could not fetch admin analytics:", err);
+        }
+      } else if (currentRole === "owner") {
+        try {
+          const [ownerRes, ownerEquipRes] = await Promise.allSettled([
+            axiosSecure.get(`${apiUrl}/api/analytics/owner/${email}`),
+            axiosSecure.get(`${apiUrl}/api/equipment/owner/${email}`),
+          ]);
+
+          if (!isCancelled && ownerRes.status === "fulfilled" && ownerRes.value.data) {
+            const data = ownerRes.value.data;
+            const me = Array.isArray(data.monthlyEarnings) && data.monthlyEarnings.length > 0
+              ? data.monthlyEarnings
+              : [
+                  { month: "Jun", earnings: 0 },
+                  { month: "Jul", earnings: 0 },
+                  { month: "Aug", earnings: 0 },
+                  { month: "Sep", earnings: 0 },
+                  { month: "Oct", earnings: 0 },
+                  { month: "Nov", earnings: data.totalEarnings || 0 },
+                ];
+
+            let catData: Array<{ category: string; completed: number; active: number; revenue: number }> = [];
+            if (ownerEquipRes.status === "fulfilled") {
+              const items = ownerEquipRes.value.data?.equipment || ownerEquipRes.value.data || [];
+              const catMap = new Map<string, { completed: number; active: number; revenue: number }>();
+              if (Array.isArray(items)) {
+                for (const it of items) {
+                  const cat = (it.category || "General").replace(" Equipment", "");
+                  const cur = catMap.get(cat) || { completed: 0, active: 0, revenue: 0 };
+                  cur.active += Number(it.availableQuantity ?? it.quantity ?? 1);
+                  catMap.set(cat, cur);
+                }
+              }
+              catData = Array.from(catMap.entries()).map(([category, val]) => ({
+                category,
+                ...val,
+              }));
+            }
+
+            setOwnerStats({
+              listedEquipment: data.listedEquipment || 0,
+              completedRentals: data.completedRentals || 0,
+              totalEarnings: data.totalEarnings || 0,
+              monthlyEarnings: data.totalEarnings || 0,
+              monthlyEarningsData: me,
+              categoryRentalsData: catData,
+            });
+          }
+        } catch (err) {
+          console.warn("Could not fetch owner analytics:", err);
+        }
+      } else {
+        // Customer role
+        try {
+          const custRes = await axiosSecure.get(`${apiUrl}/api/bookings/my-bookings`, {
+            params: { userEmail: session.user.email },
+          });
+          if (!isCancelled && custRes.data) {
+            const list = Array.isArray(custRes.data)
+              ? custRes.data
+              : custRes.data.bookings || [];
+            const active = list.filter(
+              (b: any) => b.bookingStatus === "In Use" || b.bookingStatus === "Confirmed"
+            );
+            const completed = list.filter(
+              (b: any) => b.bookingStatus === "Completed"
+            );
+            const deposit = list
+              .filter((b: any) => b.paymentStatus === "Paid" || b.paymentStatus === "Escrow Hold")
+              .reduce((acc: number, b: any) => acc + Math.round((Number(b.totalPrice) || 0) * 0.15), 0);
+
+            setCustomerStats({
+              activeRentals: active.length,
+              activeRentalName: active[0]?.equipmentName || "No active rentals",
+              completedRentals: completed.length,
+              securityDeposit: deposit,
+            });
+          }
+        } catch (err) {
+          console.warn("Could not fetch customer rentals:", err);
+        }
+      }
+
+      if (!isCancelled && !role) {
         setRole(((session?.user as any)?.role as any) || "customer");
       }
     };
 
-    fetchRole();
+    fetchDashboardData();
 
     return () => {
       isCancelled = true;
     };
-  }, [session]);
+  }, [session, role]);
 
   const userName = session?.user?.name || "Contractor";
 
@@ -134,8 +276,10 @@ export default function DashboardOverviewPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       const email = encodeURIComponent(session.user.email);
       await axiosSecure.patch(`${apiUrl}/api/users/${email}`, { role: newRole });
-    } catch (err) {
-      // Local state is already updated
+      toast.success(`Role updated to ${newRole.toUpperCase()} in database!`);
+    } catch (err: any) {
+      console.error("Failed to update role in DB:", err);
+      toast.error("Failed to update role in database.");
     }
   };
 
@@ -270,9 +414,9 @@ export default function DashboardOverviewPage() {
                   <Users className="size-3.5" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-extrabold text-foreground">1,420</p>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">{adminStats.totalUsers.toLocaleString()}</p>
               <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-                +18 this week
+                {adminStats.totalUsers} registered users
               </p>
             </div>
 
@@ -284,9 +428,9 @@ export default function DashboardOverviewPage() {
                   <Wrench className="size-3.5" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-extrabold text-foreground">186</p>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">{adminStats.totalEquipment.toLocaleString()}</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                172 live in catalog
+                {adminStats.totalEquipment} fleet machines
               </p>
             </div>
 
@@ -298,9 +442,9 @@ export default function DashboardOverviewPage() {
                   <ShoppingBag className="size-3.5" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-extrabold text-foreground">542</p>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">{adminStats.totalBookings.toLocaleString()}</p>
               <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-                58 active this month
+                {adminStats.totalBookings} orders placed
               </p>
             </div>
 
@@ -312,9 +456,9 @@ export default function DashboardOverviewPage() {
                   <Clock className="size-3.5" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-extrabold text-amber-500">14</p>
+              <p className="mt-3 text-2xl font-extrabold text-amber-500">{adminStats.pendingApprovals.toLocaleString()}</p>
               <p className="mt-1 text-[11px] text-amber-600 font-bold">
-                Requires review
+                {adminStats.pendingApprovals > 0 ? "Requires review" : "All reviewed"}
               </p>
             </div>
 
@@ -326,9 +470,9 @@ export default function DashboardOverviewPage() {
                   <CheckCircle2 className="size-3.5" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-extrabold text-foreground">468</p>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">{adminStats.completedRentals.toLocaleString()}</p>
               <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-                98.8% satisfaction
+                {adminStats.completedRentals} contracts completed
               </p>
             </div>
 
@@ -340,9 +484,9 @@ export default function DashboardOverviewPage() {
                   <DollarSign className="size-3.5" />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-extrabold text-foreground">$148,200</p>
+              <p className="mt-3 text-2xl font-extrabold text-foreground">${adminStats.totalRevenue.toLocaleString()}</p>
               <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-                Platform fee: $14,820
+                Platform fee (10%): ${Math.round(adminStats.totalRevenue * 0.1).toLocaleString()}
               </p>
             </div>
           </div>
@@ -357,12 +501,12 @@ export default function DashboardOverviewPage() {
                     Monthly Booking Statistics &amp; Volume
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Rental booking frequency and platform order volume (Jan - Nov).
+                    Rental booking frequency and platform order volume from MongoDB.
                   </p>
                 </div>
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   <TrendingUp className="size-3.5" />
-                  <span>+16.2% Annual Growth</span>
+                  <span>Live Database Metrics</span>
                 </div>
               </div>
 
@@ -370,7 +514,7 @@ export default function DashboardOverviewPage() {
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                      data={ADMIN_MONTHLY_BOOKINGS_DATA}
+                      data={adminStats.monthlyBookings}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                     >
                       <defs>
@@ -451,7 +595,7 @@ export default function DashboardOverviewPage() {
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={ADMIN_EQUIPMENT_STATUS_DATA}
+                      data={adminStats.equipmentDistribution}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                     >
                       <CartesianGrid
@@ -580,12 +724,12 @@ export default function DashboardOverviewPage() {
                   <Wrench className="size-4" />
                 </div>
               </div>
-              <p className="mt-4 text-3xl font-extrabold text-foreground">6</p>
+              <p className="mt-4 text-3xl font-extrabold text-foreground">{ownerStats.listedEquipment.toLocaleString()}</p>
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                  4 Active on Site
+                  {ownerStats.listedEquipment} Active Listings
                 </span>
-                <span>2 In Depot</span>
+                <span>Fleet Ready</span>
               </div>
             </div>
 
@@ -596,12 +740,12 @@ export default function DashboardOverviewPage() {
                   <CheckCircle2 className="size-4" />
                 </div>
               </div>
-              <p className="mt-4 text-3xl font-extrabold text-foreground">24</p>
+              <p className="mt-4 text-3xl font-extrabold text-foreground">{ownerStats.completedRentals.toLocaleString()}</p>
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">
                   100% on-time return
                 </span>
-                <span>0 disputes</span>
+                <span>Verified</span>
               </div>
             </div>
 
@@ -612,10 +756,10 @@ export default function DashboardOverviewPage() {
                   <DollarSign className="size-4" />
                 </div>
               </div>
-              <p className="mt-4 text-3xl font-extrabold text-foreground">$18,450</p>
+              <p className="mt-4 text-3xl font-extrabold text-foreground">${ownerStats.totalEarnings.toLocaleString()}</p>
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                  +$1,458 this week
+                  All-time revenue
                 </span>
                 <span>Escrow secured</span>
               </div>
@@ -628,12 +772,12 @@ export default function DashboardOverviewPage() {
                   <TrendingUp className="size-4" />
                 </div>
               </div>
-              <p className="mt-4 text-3xl font-extrabold text-foreground">$6,840</p>
+              <p className="mt-4 text-3xl font-extrabold text-foreground">${ownerStats.monthlyEarnings.toLocaleString()}</p>
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                  +18.4% vs last month
+                  Current period
                 </span>
-                <span>Current Month</span>
+                <span>Live Metrics</span>
               </div>
             </div>
           </div>
@@ -647,12 +791,12 @@ export default function DashboardOverviewPage() {
                     Monthly Earnings Trend
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Payout volume across previous 6 calendar months.
+                    Payout volume across calendar months from MongoDB.
                   </p>
                 </div>
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   <TrendingUp className="size-3.5" />
-                  <span>+18.4% Growth</span>
+                  <span>Real Yields</span>
                 </div>
               </div>
 
@@ -660,7 +804,7 @@ export default function DashboardOverviewPage() {
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                      data={OWNER_MONTHLY_EARNINGS_DATA}
+                      data={ownerStats.monthlyEarningsData}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                     >
                       <defs>
@@ -736,7 +880,7 @@ export default function DashboardOverviewPage() {
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={OWNER_CATEGORY_RENTALS_DATA}
+                      data={ownerStats.categoryRentalsData}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                     >
                       <CartesianGrid
@@ -862,15 +1006,15 @@ export default function DashboardOverviewPage() {
                 <span>Active Rentals</span>
                 <ShoppingBag className="size-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="mt-3 text-3xl font-extrabold text-foreground">1</p>
-              <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">CAT 308 CR Excavator</p>
+              <p className="mt-3 text-3xl font-extrabold text-foreground">{customerStats.activeRentals}</p>
+              <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium truncate">{customerStats.activeRentalName}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
               <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
                 <span>Saved Equipment</span>
                 <Heart className="size-4 text-red-500" />
               </div>
-              <p className="mt-3 text-3xl font-extrabold text-foreground">4</p>
+              <p className="mt-3 text-3xl font-extrabold text-foreground">{favoritesCount}</p>
               <p className="mt-1 text-xs text-muted-foreground">In your favorites list</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
@@ -878,15 +1022,15 @@ export default function DashboardOverviewPage() {
                 <span>Completed Rentals</span>
                 <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="mt-3 text-3xl font-extrabold text-foreground">12</p>
-              <p className="mt-1 text-xs text-muted-foreground">100% on-time returns</p>
+              <p className="mt-3 text-3xl font-extrabold text-foreground">{customerStats.completedRentals}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{customerStats.completedRentals} past orders</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
               <div className="flex items-center justify-between text-muted-foreground text-xs uppercase font-bold tracking-wider">
                 <span>Security Deposit</span>
                 <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="mt-3 text-3xl font-extrabold text-foreground">$500</p>
+              <p className="mt-3 text-3xl font-extrabold text-foreground">${customerStats.securityDeposit.toLocaleString()}</p>
               <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">Escrow protected</p>
             </div>
           </div>

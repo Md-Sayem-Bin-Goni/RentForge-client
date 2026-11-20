@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import PrivateRoute from "@/components/shared/PrivateRoute";
 import { useSession } from "@/lib/auth-client";
+import { syncUserAndFetchJwt } from "@/lib/auth-sync";
 import { axiosSecure } from "@/lib/axiosSecure";
 
 interface EquipmentItem {
@@ -54,118 +55,6 @@ const CATEGORIES = [
   "Agriculture Equipment",
   "Electronics",
   "Event Equipment",
-];
-
-// Fallback listings for owner demo and resilient UX
-const MOCK_OWNER_EQUIPMENT: EquipmentItem[] = [
-  {
-    _id: "eq-201",
-    name: "CAT 308 CR Mini Hydraulic Excavator",
-    category: "Construction Equipment",
-    brand: "Caterpillar",
-    model: "308 CR",
-    rentalPrice: 320,
-    rentalType: "Daily",
-    availableQuantity: 2,
-    location: "Chicago, IL",
-    image:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=400&q=80",
-    status: "Approved",
-    condition: "Excellent",
-    description: "Compact radius swing excavator with thumb clamp, enclosed cab with AC, and rubber tracks.",
-    rentalTerms: "Operator certification required. Return with full diesel fuel.",
-    createdAt: "2026-11-15",
-  },
-  {
-    _id: "eq-202",
-    name: "RED V-Raptor 8K VV Cinema Package",
-    category: "Photography Equipment",
-    brand: "RED Digital Cinema",
-    model: "V-Raptor 8K VV",
-    rentalPrice: 450,
-    rentalType: "Daily",
-    availableQuantity: 1,
-    location: "Los Angeles, CA",
-    image:
-      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=400&q=80",
-    status: "Approved",
-    condition: "Like New",
-    description: "Multi-format 8K sensor package with CFexpress media, cage, top handle, and Gold Mount plate.",
-    rentalTerms: "COI certificate required. Studio dispatch only.",
-    createdAt: "2026-11-12",
-  },
-  {
-    _id: "eq-203",
-    name: "JLG 600AJ 60ft Articulating Boom Lift",
-    category: "Construction Equipment",
-    brand: "JLG",
-    model: "600AJ",
-    rentalPrice: 1350,
-    rentalType: "Weekly",
-    availableQuantity: 1,
-    location: "Dallas, TX",
-    image:
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80",
-    status: "Approved",
-    condition: "Good",
-    description: "Four-wheel drive rough-terrain articulating boom lift with 60ft platform height and 39ft outreach.",
-    rentalTerms: "Harness and hardhat mandatory. Transportation fee applicable.",
-    createdAt: "2026-11-10",
-  },
-  {
-    _id: "eq-207",
-    name: "Bobcat S650 Skid-Steer Loader",
-    category: "Construction Equipment",
-    brand: "Bobcat",
-    model: "S650 Tier 4",
-    rentalPrice: 275,
-    rentalType: "Daily",
-    availableQuantity: 3,
-    location: "Denver, CO",
-    image:
-      "https://images.unsplash.com/photo-1580983559367-5b6515b02660?auto=format&fit=crop&w=400&q=80",
-    status: "Pending",
-    condition: "Excellent",
-    description: "Vertical lift path skid steer loader equipped with high flow hydraulics and heavy duty dirt bucket.",
-    rentalTerms: "Daily inspection logs required. Cleaning fee if returned muddy.",
-    createdAt: "2026-11-19",
-  },
-  {
-    _id: "eq-208",
-    name: "DJI Inspire 3 Cinema Drone Combo",
-    category: "Photography Equipment",
-    brand: "DJI Pro",
-    model: "Inspire 3 8K",
-    rentalPrice: 520,
-    rentalType: "Daily",
-    availableQuantity: 1,
-    location: "Miami, FL",
-    image:
-      "https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=400&q=80",
-    status: "Pending",
-    condition: "Brand New",
-    description: "Full-frame 8K ProRes RAW cinema drone kit with RC Plus controller and TB51 intelligent batteries.",
-    rentalTerms: "FAA Part 107 license copy required before dispatch.",
-    createdAt: "2026-11-20",
-  },
-  {
-    _id: "eq-209",
-    name: "Multiquip 6000W Mobile Light Tower",
-    category: "Event Equipment",
-    brand: "Multiquip",
-    model: "LT6K",
-    rentalPrice: 650,
-    rentalType: "Weekly",
-    availableQuantity: 2,
-    location: "Austin, TX",
-    image:
-      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=400&q=80",
-    status: "Rejected",
-    condition: "Fair",
-    description: "Four 1000-watt metal halide lamps with 30-foot mast and diesel engine generator.",
-    rentalTerms: "Rejected due to missing engine emissions documentation. Please update certification and re-submit.",
-    createdAt: "2026-11-08",
-  },
 ];
 
 export default function MyEquipmentPage() {
@@ -199,33 +88,59 @@ export default function MyEquipmentPage() {
   const [deletingItem, setDeletingItem] = React.useState<EquipmentItem | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  // Fetch owner equipment
+  // Fetch owner equipment from GET /api/equipment/owner/:email
   const fetchEquipment = React.useCallback(async () => {
     setIsLoading(true);
     const email = session?.user?.email;
+    if (!email) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      // Try owner-specific endpoint
-      const queryUrl = email
-        ? `${apiUrl}/api/equipment?ownerEmail=${encodeURIComponent(email)}`
-        : `${apiUrl}/api/equipment`;
 
-      const res = await axiosSecure.get(queryUrl);
+      // Ensure JWT token exists
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("access-token");
+      if (!token) {
+        await syncUserAndFetchJwt({
+          email: session.user.email,
+          name: session.user.name || undefined,
+          image: session.user.image || undefined,
+          role: (session.user as any)?.role || "owner",
+        });
+      }
+
+      // Live fetch from authenticated GET /api/equipment/owner/:email
+      const res = await axiosSecure.get(
+        `${apiUrl}/api/equipment/owner/${encodeURIComponent(email)}`
+      );
+
       const items = res.data?.equipment || res.data?.data || res.data;
 
-      if (Array.isArray(items) && items.length > 0) {
-        setEquipmentList(items);
+      if (Array.isArray(items)) {
+        const mapped = items.map((it: any) => ({
+          ...it,
+          rentalPrice: Number(it.rentalPrice ?? it.price ?? it.pricePerDay ?? 0),
+          price: Number(it.price ?? it.rentalPrice ?? it.pricePerDay ?? 0),
+          image:
+            it.image ||
+            it.equipmentImage ||
+            (Array.isArray(it.images) && it.images.length > 0 ? it.images[0] : ""),
+          availableQuantity: Number(it.availableQuantity ?? it.quantity ?? 1),
+        }));
+        setEquipmentList(mapped);
       } else {
-        setEquipmentList(MOCK_OWNER_EQUIPMENT);
+        setEquipmentList([]);
       }
-    } catch (err) {
-      console.warn("Could not fetch owner equipment from backend; using mock fallback:", err);
-      setEquipmentList(MOCK_OWNER_EQUIPMENT);
+    } catch (err: any) {
+      console.warn("Could not fetch owner equipment from backend:", err);
+      setEquipmentList([]);
     } finally {
       setIsLoading(false);
     }
-  }, [session?.user?.email]);
+  }, [session?.user?.email, session?.user?.name, session?.user?.image, session?.user]);
 
   React.useEffect(() => {
     fetchEquipment();
@@ -250,7 +165,7 @@ export default function MyEquipmentPage() {
     setIsEditOpen(true);
   };
 
-  // Submit Edit Modal (PATCH)
+  // Submit Edit Modal (PATCH /api/equipment/:id)
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
@@ -260,27 +175,14 @@ export default function MyEquipmentPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       await axiosSecure.patch(`${apiUrl}/api/equipment/${editingItem._id}`, editFormData);
 
-      // Update state locally
-      setEquipmentList((prev) =>
-        prev.map((it) =>
-          it._id === editingItem._id ? { ...it, ...editFormData } : it
-        )
-      );
-
-      toast.success("Equipment details updated successfully!");
+      toast.success("Equipment details updated successfully in MongoDB!");
       setIsEditOpen(false);
       setEditingItem(null);
+      await fetchEquipment();
     } catch (err: any) {
-      console.warn("Backend PATCH /api/equipment error:", err);
-      // Fallback local update
-      setEquipmentList((prev) =>
-        prev.map((it) =>
-          it._id === editingItem._id ? { ...it, ...editFormData } : it
-        )
-      );
-      toast.success("Equipment updated (local session updated).");
-      setIsEditOpen(false);
-      setEditingItem(null);
+      console.error("Backend PATCH /api/equipment error:", err);
+      const errMsg = err.response?.data?.message || err.message || "Failed to update equipment.";
+      toast.error(errMsg);
     } finally {
       setIsSavingEdit(false);
     }
@@ -292,7 +194,7 @@ export default function MyEquipmentPage() {
     setIsDeleteOpen(true);
   };
 
-  // Confirm Delete (DELETE)
+  // Confirm Delete (DELETE /api/equipment/:id)
   const handleConfirmDelete = async () => {
     if (!deletingItem) return;
 
@@ -301,17 +203,14 @@ export default function MyEquipmentPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       await axiosSecure.delete(`${apiUrl}/api/equipment/${deletingItem._id}`);
 
-      setEquipmentList((prev) => prev.filter((it) => it._id !== deletingItem._id));
-      toast.success(`"${deletingItem.name}" deleted from your inventory.`);
+      toast.success(`"${deletingItem.name}" deleted from your inventory in MongoDB.`);
       setIsDeleteOpen(false);
       setDeletingItem(null);
+      await fetchEquipment();
     } catch (err: any) {
-      console.warn("Backend DELETE /api/equipment error:", err);
-      // Fallback local remove
-      setEquipmentList((prev) => prev.filter((it) => it._id !== deletingItem._id));
-      toast.success(`"${deletingItem.name}" removed from inventory.`);
-      setIsDeleteOpen(false);
-      setDeletingItem(null);
+      console.error("Backend DELETE /api/equipment error:", err);
+      const errMsg = err.response?.data?.message || err.message || "Failed to delete equipment.";
+      toast.error(errMsg);
     } finally {
       setIsDeleting(false);
     }

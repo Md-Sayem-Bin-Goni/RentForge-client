@@ -18,6 +18,7 @@ import {
 import PrivateRoute from "@/components/shared/PrivateRoute";
 import { axiosSecure } from "@/lib/axiosSecure";
 import { useSession } from "@/lib/auth-client";
+import { syncUserAndFetchJwt } from "@/lib/auth-sync";
 
 interface FavoriteEquipment {
   _id: string;
@@ -33,109 +34,98 @@ interface FavoriteEquipment {
   addedAt: string;
 }
 
-// Fallback favorites list for robust preview
-const MOCK_FAVORITES: FavoriteEquipment[] = [
-  {
-    _id: "fav-1",
-    equipmentId: "eq-201",
-    name: "CAT 308 CR Mini Hydraulic Excavator",
-    category: "Construction Equipment",
-    image:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=400&q=80",
-    rentalPrice: 320,
-    rentalType: "Daily",
-    location: "Chicago, IL",
-    isAvailable: true,
-    rating: 4.95,
-    addedAt: "2026-11-18",
-  },
-  {
-    _id: "fav-2",
-    equipmentId: "eq-202",
-    name: "RED V-Raptor 8K VV Cinema Package",
-    category: "Photography Equipment",
-    image:
-      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=400&q=80",
-    rentalPrice: 450,
-    rentalType: "Daily",
-    location: "Los Angeles, CA",
-    isAvailable: true,
-    rating: 5.0,
-    addedAt: "2026-11-15",
-  },
-  {
-    _id: "fav-3",
-    equipmentId: "eq-203",
-    name: "JLG 600AJ 60ft Articulating Boom Lift",
-    category: "Construction Equipment",
-    image:
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80",
-    rentalPrice: 1350,
-    rentalType: "Weekly",
-    location: "Dallas, TX",
-    isAvailable: true,
-    rating: 4.9,
-    addedAt: "2026-11-10",
-  },
-  {
-    _id: "fav-4",
-    equipmentId: "eq-205",
-    name: "Cummins 100kW Towable Quiet Generator",
-    category: "Electronics",
-    image:
-      "https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=400&q=80",
-    rentalPrice: 210,
-    rentalType: "Daily",
-    location: "Atlanta, GA",
-    isAvailable: false,
-    rating: 4.92,
-    addedAt: "2026-11-04",
-  },
-];
-
 export default function FavoritesPage() {
-  const { data: session } = useSession();
+  const { data: session, isPending: isSessionPending } = useSession();
 
-  const [favorites, setFavorites] = React.useState<FavoriteEquipment[]>(MOCK_FAVORITES);
+  const [favorites, setFavorites] = React.useState<FavoriteEquipment[]>([]);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(true);
   const [removingId, setRemovingId] = React.useState<string | null>(null);
 
-  // Fetch favorites from backend
-  React.useEffect(() => {
-    let isCancelled = false;
+  // Fetch favorites from backend GET /api/favorites/:email
+  const fetchFavorites = React.useCallback(async () => {
+    if (!session?.user?.email) return;
 
-    const fetchFavorites = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const email = session?.user?.email;
-        const res = await axiosSecure.get(`${apiUrl}/api/favorites`, {
-          params: { userEmail: email },
+    try {
+      setIsLoading(true);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+      // Ensure JWT token exists before fetching
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("access-token");
+      if (!token) {
+        await syncUserAndFetchJwt({
+          email: session.user.email,
+          name: session.user.name || undefined,
+          image: session.user.image || undefined,
+          role: (session.user as any)?.role || "customer",
+        });
+      }
+
+      const res = await axiosSecure.get(
+        `${apiUrl}/api/favorites/${encodeURIComponent(session.user.email)}`
+      );
+
+      if (res.data) {
+        const list = Array.isArray(res.data)
+          ? res.data
+          : res.data.favorites || res.data.items || [];
+
+        const mapped: FavoriteEquipment[] = list.map((item: any) => {
+          const equip = item.equipment || item;
+          const priceVal = Number(
+            equip.rentalPrice ?? equip.price ?? equip.pricePerDay ?? 0
+          );
+          const imageVal =
+            equip.image ||
+            equip.equipmentImage ||
+            (Array.isArray(equip.images) && equip.images.length > 0
+              ? equip.images[0]
+              : "https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=400&q=80");
+          const nameVal = equip.name || equip.title || item.name || "Equipment Item";
+          const qtyVal = Number(equip.availableQuantity ?? equip.quantity ?? 1);
+          const isAvail =
+            equip.isAvailable !== undefined
+              ? Boolean(equip.isAvailable)
+              : qtyVal > 0;
+
+          return {
+            _id: item._id,
+            equipmentId: item.equipmentId || equip._id,
+            name: nameVal,
+            category: equip.category || "General",
+            image: imageVal,
+            rentalPrice: priceVal,
+            rentalType: equip.rentalType || "Daily",
+            location: equip.location || "Available Nationwide",
+            isAvailable: isAvail,
+            rating: equip.rating || 5.0,
+            addedAt:
+              item.addedAt ||
+              (item.createdAt
+                ? new Date(item.createdAt).toISOString().split("T")[0]
+                : "Recently"),
+          };
         });
 
-        if (!isCancelled && res.data) {
-          const list = Array.isArray(res.data)
-            ? res.data
-            : res.data.favorites || res.data.items || [];
-          if (list.length > 0) {
-            setFavorites(list);
-          }
-        }
-      } catch (err) {
-        // Fallback to mock list
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+        setFavorites(mapped);
       }
-    };
+    } catch (err: any) {
+      console.warn("Could not fetch user favorites from backend:", err);
+      // Empty on error, never inject fake mock favorites
+      setFavorites([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session?.user?.email]);
 
-    fetchFavorites();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [session]);
+  React.useEffect(() => {
+    if (!isSessionPending && session?.user?.email) {
+      fetchFavorites();
+    } else if (!isSessionPending && !session?.user?.email) {
+      setIsLoading(false);
+    }
+  }, [isSessionPending, session?.user?.email, fetchFavorites]);
 
   // Handle Remove from Favorites
   const handleRemove = async (favId: string, equipmentName: string) => {
@@ -143,17 +133,14 @@ export default function FavoritesPage() {
       setRemovingId(favId);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-      // Call DELETE /api/favorites/:id
-      try {
-        await axiosSecure.delete(`${apiUrl}/api/favorites/${favId}`);
-      } catch (err) {
-        // Optimistic removal for mock support
-      }
+      await axiosSecure.delete(`${apiUrl}/api/favorites/${favId}`);
 
       setFavorites((prev) => prev.filter((item) => item._id !== favId));
       toast.success(`Removed "${equipmentName}" from favorites.`);
-    } catch (error) {
-      toast.error("Failed to remove favorite item.");
+    } catch (error: any) {
+      console.error("Failed to remove favorite:", error);
+      const msg = error.response?.data?.message || "Failed to remove favorite item.";
+      toast.error(msg);
     } finally {
       setRemovingId(null);
     }
@@ -167,7 +154,7 @@ export default function FavoritesPage() {
   );
 
   return (
-    <PrivateRoute allowedRoles={["customer"]}>
+    <PrivateRoute allowedRoles={["customer", "owner", "admin"]}>
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -184,13 +171,24 @@ export default function FavoritesPage() {
             </p>
           </div>
 
-          <Link
-            href="/equipment"
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-500 transition-colors w-fit"
-          >
-            <span>Explore Catalog</span>
-            <ArrowUpRight className="size-4" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchFavorites()}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
+              title="Refresh favorites"
+            >
+              <RotateCcw className="size-3.5" />
+              <span>Refresh</span>
+            </button>
+
+            <Link
+              href="/equipment"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-500 transition-colors w-fit"
+            >
+              <span>Explore Catalog</span>
+              <ArrowUpRight className="size-4" />
+            </Link>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -215,7 +213,7 @@ export default function FavoritesPage() {
 
         {/* Favorites Table */}
         <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-          {isLoading ? (
+          {isLoading || isSessionPending ? (
             <div className="p-12 text-center">
               <Loader2 className="mx-auto size-8 animate-spin text-emerald-600" />
               <p className="mt-3 text-sm text-muted-foreground">Loading your saved favorites...</p>
