@@ -162,7 +162,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     // Default: customer
     return [
       ...commonLinks,
-      { name: "My Rentals & Bookings", href: "/dashboard/bookings", icon: ShoppingBag },
+      { name: "My Rentals & Bookings", href: "/dashboard/my-rentals", icon: ShoppingBag },
       { name: "My Saved Equipment", href: "/dashboard/favorites", icon: Heart },
       { name: "Payment Receipts", href: "/dashboard/invoices", icon: Receipt },
     ];
