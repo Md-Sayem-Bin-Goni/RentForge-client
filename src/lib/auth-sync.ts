@@ -8,23 +8,26 @@ export interface SyncUserData {
 }
 
 /**
- * On login/register success:
- * 1. Syncs user profile to backend POST /api/users
+ * On login/register success or session detection (Email/Password or Google Social Login):
+ * 1. Syncs user profile to backend POST /api/users with { name, email, image }
  * 2. Fetches JWT token from backend POST /api/jwt
  * 3. Saves token to localStorage ('token' and 'access-token')
  */
 export async function syncUserAndFetchJwt(
   userData: SyncUserData
 ): Promise<string | null> {
-  const apiUrl = getApiBaseUrl();
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl =
+    envUrl && envUrl.trim().length > 0
+      ? envUrl.trim().replace(/\/+$/, "")
+      : getApiBaseUrl();
 
-  // 1. Sync user to backend POST /api/users
+  // 1. Sync user to backend POST /api/users with { name, email, image }
   try {
     await axiosPublic.post(`${apiUrl}/api/users`, {
       name: userData.name || userData.email.split("@")[0],
-      email: userData.email,
+      email: userData.email.trim(),
       image: userData.image || "",
-      role: userData.role || "customer",
     });
   } catch (error) {
     console.warn("Backend /api/users sync warning:", error);
@@ -33,7 +36,7 @@ export async function syncUserAndFetchJwt(
   // 2. Fetch JWT from backend POST /api/jwt
   try {
     const jwtRes = await axiosPublic.post(`${apiUrl}/api/jwt`, {
-      email: userData.email,
+      email: userData.email.trim(),
     });
 
     const token = jwtRes.data?.token || jwtRes.data?.data?.token;

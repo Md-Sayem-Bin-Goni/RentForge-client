@@ -218,13 +218,24 @@ export default function HomePage() {
     const fetchFeatured = async () => {
       try {
         setIsLoadingFeatured(true);
-        const apiUrl = getApiBaseUrl();
+        const envUrl = process.env.NEXT_PUBLIC_API_URL;
+        const apiUrl =
+          envUrl && envUrl.trim().length > 0
+            ? envUrl.trim().replace(/\/+$/, "")
+            : getApiBaseUrl();
         const response = await axiosPublic.get(`${apiUrl}/api/equipment/featured`);
 
         if (isMounted && response.data) {
-          const items = Array.isArray(response.data)
-            ? response.data
-            : response.data.equipment || response.data.items || [];
+          const raw = response.data;
+          const items = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.data)
+            ? raw.data
+            : Array.isArray(raw?.equipment)
+            ? raw.equipment
+            : Array.isArray(raw?.items)
+            ? raw.items
+            : [];
 
           if (items.length > 0) {
             // Take up to 6 approved items with normalized fields
@@ -252,6 +263,8 @@ export default function HomePage() {
               };
             });
             setFeaturedItems(approved);
+          } else {
+            setFeaturedItems([]);
           }
         }
       } catch (err) {
@@ -439,102 +452,136 @@ export default function HomePage() {
           </div>
 
           {/* Cards Grid: Enforcing STRICT uniform height and width */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-80px" }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-          >
-            {featuredItems.map((item) => (
-              <motion.div
-                key={item._id}
-                variants={fadeIn}
-                className="group flex flex-col h-full rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-950/5 overflow-hidden"
+          {isLoadingFeatured ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[430px] rounded-2xl border border-border bg-card animate-pulse flex flex-col justify-between p-5"
+                >
+                  <div className="h-52 w-full rounded-xl bg-muted" />
+                  <div className="space-y-3 mt-4">
+                    <div className="h-4 w-1/3 rounded bg-muted" />
+                    <div className="h-6 w-3/4 rounded bg-muted" />
+                    <div className="h-4 w-1/2 rounded bg-muted" />
+                  </div>
+                  <div className="h-9 w-full rounded-lg bg-muted mt-4" />
+                </div>
+              ))}
+            </div>
+          ) : featuredItems.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card p-12 text-center my-4">
+              <Layers className="size-12 mx-auto text-emerald-600 dark:text-emerald-400 mb-3" />
+              <h3 className="text-lg font-bold text-foreground">Featured Machinery Updating</h3>
+              <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+                Verified machinery listings will appear here shortly. You can explore our complete equipment catalog.
+              </p>
+              <Link
+                href="/equipment"
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 transition-colors"
               >
-                {/* Image Container with Fixed Aspect Ratio */}
-                <div className="relative h-56 w-full overflow-hidden bg-muted">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {/* Category Pill */}
-                  <span className="absolute top-3 left-3 rounded-full bg-[#111827]/85 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-emerald-400 border border-emerald-500/30">
-                    {item.category}
-                  </span>
-
-                  {/* Status / Condition */}
-                  <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-md">
-                    <CheckCircle2 className="size-3" />
-                    <span>Approved</span>
-                  </span>
-
-                  {/* Price Tag Overlay */}
-                  <div className="absolute bottom-3 right-3 rounded-lg bg-[#111827]/90 backdrop-blur-md px-3 py-1 text-right border border-gray-750">
-                    <span className="text-base font-extrabold text-white">
-                      ${item.pricePerDay}
+                <span>Browse All Equipment</span>
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+          ) : (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+              {featuredItems.map((item) => (
+                <motion.div
+                  key={item._id}
+                  variants={fadeIn}
+                  className="group flex flex-col h-full rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-950/5 overflow-hidden"
+                >
+                  {/* Image Container with Fixed Aspect Ratio */}
+                  <div className="relative h-56 w-full overflow-hidden bg-muted">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {/* Category Pill */}
+                    <span className="absolute top-3 left-3 rounded-full bg-[#111827]/85 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-emerald-400 border border-emerald-500/30">
+                      {item.category}
                     </span>
-                    <span className="text-xs text-gray-400">/day</span>
-                  </div>
-                </div>
 
-                {/* Card Body with Flex Column Spacing */}
-                <div className="flex flex-1 flex-col justify-between p-6">
-                  <div>
-                    {/* Location & Rating */}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                        {item.location}
+                    {/* Status / Condition */}
+                    <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-md">
+                      <CheckCircle2 className="size-3" />
+                      <span>Approved</span>
+                    </span>
+
+                    {/* Price Tag Overlay */}
+                    <div className="absolute bottom-3 right-3 rounded-lg bg-[#111827]/90 backdrop-blur-md px-3 py-1 text-right border border-gray-750">
+                      <span className="text-base font-extrabold text-white">
+                        ${item.pricePerDay}
                       </span>
-                      <span className="flex items-center gap-1 font-semibold text-foreground">
-                        <Star className="size-3.5 fill-amber-400 text-amber-400" />
-                        {item.rating} ({item.reviewsCount})
-                      </span>
+                      <span className="text-xs text-gray-400">/day</span>
                     </div>
+                  </div>
 
-                    {/* Machine Title */}
-                    <h3 className="mt-3 text-lg font-bold text-foreground line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                      {item.name}
-                    </h3>
-
-                    {/* Spec Tags */}
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {item.specs?.slice(0, 3).map((spec, i) => (
-                        <span
-                          key={i}
-                          className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                        >
-                          {spec}
+                  {/* Card Body with Flex Column Spacing */}
+                  <div className="flex flex-1 flex-col justify-between p-6">
+                    <div>
+                      {/* Location & Rating */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                          {item.location}
                         </span>
-                      ))}
+                        <span className="flex items-center gap-1 font-semibold text-foreground">
+                          <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                          {item.rating} ({item.reviewsCount})
+                        </span>
+                      </div>
+
+                      {/* Machine Title */}
+                      <h3 className="mt-3 text-lg font-bold text-foreground line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        {item.name}
+                      </h3>
+
+                      {/* Spec Tags */}
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {item.specs?.slice(0, 3).map((spec, i) => (
+                          <span
+                            key={i}
+                            className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                          >
+                            {spec}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Card Bottom: Owner info + View Details Action */}
+                    <div className="mt-6 pt-4 border-t border-border flex items-center justify-between gap-3">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground block">Owner:</span>
+                        <span className="font-semibold text-foreground truncate max-w-[120px] block">
+                          {item.ownerName}
+                        </span>
+                      </div>
+
+                      {/* View Details Button with Auth Check */}
+                      <button
+                        type="button"
+                        onClick={() => handleViewDetails(item._id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-emerald-500 shadow-sm shadow-emerald-950/20 active:translate-y-px"
+                      >
+                        <span>View Details</span>
+                        <ArrowUpRight className="size-3.5" />
+                      </button>
                     </div>
                   </div>
-
-                  {/* Card Bottom: Owner info + View Details Action */}
-                  <div className="mt-6 pt-4 border-t border-border flex items-center justify-between gap-3">
-                    <div className="text-xs">
-                      <span className="text-muted-foreground block">Owner:</span>
-                      <span className="font-semibold text-foreground truncate max-w-[120px] block">
-                        {item.ownerName}
-                      </span>
-                    </div>
-
-                    {/* View Details Button with Auth Check */}
-                    <button
-                      type="button"
-                      onClick={() => handleViewDetails(item._id)}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-emerald-500 shadow-sm shadow-emerald-950/20 active:translate-y-px"
-                    >
-                      <span>View Details</span>
-                      <ArrowUpRight className="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
         </div>
       </section>
 

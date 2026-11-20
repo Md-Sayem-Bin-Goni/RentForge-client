@@ -101,7 +101,11 @@ function EquipmentContent() {
 
     const fetchEquipment = async () => {
       setIsLoading(true);
-      const apiUrl = getApiBaseUrl();
+      const envUrl = process.env.NEXT_PUBLIC_API_URL;
+      const apiUrl =
+        envUrl && envUrl.trim().length > 0
+          ? envUrl.trim().replace(/\/+$/, "")
+          : getApiBaseUrl();
 
       try {
         const params: Record<string, any> = {
@@ -120,11 +124,16 @@ function EquipmentContent() {
         const response = await axiosPublic.get(`${apiUrl}/api/equipment`, { params });
 
         if (!isCancelled && response.data) {
-          const rawItems =
-            response.data.data ||
-            response.data.equipment ||
-            response.data.items ||
-            (Array.isArray(response.data) ? response.data : []);
+          const raw = response.data;
+          const rawItems = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.data)
+            ? raw.data
+            : Array.isArray(raw?.equipment)
+            ? raw.equipment
+            : Array.isArray(raw?.items)
+            ? raw.items
+            : [];
 
           const serverTotal =
             response.data.totalCount !== undefined

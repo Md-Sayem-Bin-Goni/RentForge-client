@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
+import { syncUserAndFetchJwt } from "@/lib/auth-sync";
 
 // Custom SVG Logo for RentForge: Anvil & Forging Spark
 export function RentForgeLogo({ className = "size-8" }: { className?: string }) {
@@ -79,6 +80,17 @@ function NavbarContent() {
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Sync user with backend whenever session user is detected (covers Google Social Login, email login, and page reloads)
+  React.useEffect(() => {
+    if (session?.user?.email) {
+      syncUserAndFetchJwt({
+        name: session.user.name || undefined,
+        email: session.user.email,
+        image: session.user.image || undefined,
+      });
+    }
+  }, [session?.user?.email]);
 
   // Close mobile menu on navigation
   React.useEffect(() => {
