@@ -111,15 +111,15 @@ export default function Footer() {
     { name: "How RentForge Works", href: "/how-it-works" },
     { name: "About Our Platform", href: "/about" },
     { name: "List Your Machinery (Owners)", href: "/register?role=owner" },
-    { name: "Rental Protection Guarantee", href: "/protection" },
+    { name: "Rental Protection Guarantee", href: "/how-it-works#protection" },
   ];
 
   const legalLinks = [
-    { name: "Terms of Service", href: "/terms" },
-    { name: "Privacy Policy", href: "/privacy" },
-    { name: "Damage Waiver & Insurance", href: "/insurance" },
-    { name: "Rental Agreement", href: "/agreement" },
-    { name: "Dispute Resolution", href: "/disputes" },
+    { name: "Terms of Service", href: "/about#terms" },
+    { name: "Privacy Policy", href: "/about#privacy" },
+    { name: "Damage Waiver & Insurance", href: "/how-it-works#protection" },
+    { name: "Rental Agreement", href: "/about#agreement" },
+    { name: "Dispute Resolution", href: "/about#disputes" },
   ];
 
   return (
@@ -313,7 +313,11 @@ export default function Footer() {
             <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-gray-400">
               {legalLinks.map((item) => (
                 <li key={item.name}>
-                  <Link href={item.href} className="hover:text-emerald-400 transition-colors">
+                  <Link
+                    href={item.href}
+                    prefetch={false}
+                    className="hover:text-emerald-400 transition-colors"
+                  >
                     {item.name}
                   </Link>
                 </li>

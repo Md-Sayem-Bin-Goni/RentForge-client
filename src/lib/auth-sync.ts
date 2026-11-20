@@ -1,4 +1,4 @@
-import axios from "axios";
+import { axiosPublic, getApiBaseUrl } from "./axiosSecure";
 
 export interface SyncUserData {
   name?: string;
@@ -16,11 +16,11 @@ export interface SyncUserData {
 export async function syncUserAndFetchJwt(
   userData: SyncUserData
 ): Promise<string | null> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const apiUrl = getApiBaseUrl();
 
   // 1. Sync user to backend POST /api/users
   try {
-    await axios.post(`${apiUrl}/api/users`, {
+    await axiosPublic.post(`${apiUrl}/api/users`, {
       name: userData.name || userData.email.split("@")[0],
       email: userData.email,
       image: userData.image || "",
@@ -32,7 +32,7 @@ export async function syncUserAndFetchJwt(
 
   // 2. Fetch JWT from backend POST /api/jwt
   try {
-    const jwtRes = await axios.post(`${apiUrl}/api/jwt`, {
+    const jwtRes = await axiosPublic.post(`${apiUrl}/api/jwt`, {
       email: userData.email,
     });
 

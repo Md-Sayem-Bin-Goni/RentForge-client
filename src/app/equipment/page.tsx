@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
+import { axiosPublic, getApiBaseUrl } from "@/lib/axiosSecure";
 import {
   Search,
   SlidersHorizontal,
@@ -101,7 +101,7 @@ function EquipmentContent() {
 
     const fetchEquipment = async () => {
       setIsLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const apiUrl = getApiBaseUrl();
 
       try {
         const params: Record<string, any> = {
@@ -117,7 +117,7 @@ function EquipmentContent() {
         if (maxPrice !== "") params.maxPrice = maxPrice;
         if (availableOnly) params.availableOnly = true;
 
-        const response = await axios.get(`${apiUrl}/api/equipment`, { params });
+        const response = await axiosPublic.get(`${apiUrl}/api/equipment`, { params });
 
         if (!isCancelled && response.data) {
           const rawItems =

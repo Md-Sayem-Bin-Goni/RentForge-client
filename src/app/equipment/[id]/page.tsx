@@ -29,7 +29,7 @@ import {
   Layers,
 } from "lucide-react";
 import PrivateRoute from "@/components/shared/PrivateRoute";
-import { axiosSecure } from "@/lib/axiosSecure";
+import { axiosSecure, axiosPublic, getApiBaseUrl } from "@/lib/axiosSecure";
 import { useSession } from "@/lib/auth-client";
 import { syncUserAndFetchJwt } from "@/lib/auth-sync";
 
@@ -102,8 +102,8 @@ function EquipmentDetailsContent() {
       if (!id) return;
       try {
         setIsPageLoading(true);
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const res = await axiosSecure.get(`${apiUrl}/api/equipment/${id}`);
+        const apiUrl = getApiBaseUrl();
+        const res = await axiosPublic.get(`${apiUrl}/api/equipment/${id}`);
         if (isMounted && res.data) {
           const item = res.data.equipment || res.data;
           const priceVal = Number(item.rentalPrice ?? item.price ?? item.pricePerDay ?? 0);
@@ -175,7 +175,7 @@ function EquipmentDetailsContent() {
       if (!session?.user?.email) return;
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const apiUrl = getApiBaseUrl();
         const token =
           localStorage.getItem("token") || localStorage.getItem("access-token");
         if (!token) {
@@ -252,7 +252,7 @@ function EquipmentDetailsContent() {
 
     try {
       setIsFavoriteLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const apiUrl = getApiBaseUrl();
 
       const token =
         localStorage.getItem("token") || localStorage.getItem("access-token");
@@ -335,7 +335,7 @@ function EquipmentDetailsContent() {
 
     try {
       setIsCheckoutLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const apiUrl = getApiBaseUrl();
 
       // Ensure user has valid JWT token in localStorage before checkout
       if (typeof window !== "undefined" && session?.user?.email) {

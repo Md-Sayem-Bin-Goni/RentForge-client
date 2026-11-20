@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, type Variants } from "framer-motion";
-import axios from "axios";
+import { axiosPublic, getApiBaseUrl } from "@/lib/axiosSecure";
 import {
   HardHat,
   Camera,
@@ -218,8 +218,8 @@ export default function HomePage() {
     const fetchFeatured = async () => {
       try {
         setIsLoadingFeatured(true);
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const response = await axios.get(`${apiUrl}/api/equipment/featured`);
+        const apiUrl = getApiBaseUrl();
+        const response = await axiosPublic.get(`${apiUrl}/api/equipment/featured`);
 
         if (isMounted && response.data) {
           const items = Array.isArray(response.data)
