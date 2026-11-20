@@ -73,6 +73,7 @@ export default function Navbar() {
 
   // Better-Auth Session
   const { data: session, isPending } = useSession();
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
 
   // Handle theme mounting state to prevent hydration mismatch
   React.useEffect(() => {
@@ -208,9 +209,9 @@ export default function Navbar() {
                 <span className="max-w-[100px] truncate font-medium">
                   {session.user.name || session.user.email?.split("@")[0] || "User"}
                 </span>
-                {session.user.role && (
+                {userRole && (
                   <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[10px] font-semibold text-emerald-400 uppercase">
-                    {session.user.role}
+                    {userRole}
                   </span>
                 )}
               </div>
@@ -318,9 +319,9 @@ export default function Navbar() {
                     <User className="size-4 text-emerald-400" />
                     <span>{session.user.name || session.user.email}</span>
                   </div>
-                  {session.user.role && (
+                  {userRole && (
                     <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400 uppercase">
-                      {session.user.role}
+                      {userRole}
                     </span>
                   )}
                 </div>
